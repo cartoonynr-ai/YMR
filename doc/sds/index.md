@@ -12,6 +12,7 @@
 * [F-07: ระบบขายหน้าร้าน (POS Checkout)](./f07-pos-checkout.md)
 * [F-08: ตรวจสอบประวัติการขายหน้าร้าน (POS History)](./f08-pos-history.md)
 * [F-09: ระบบหน้าปัดสรุปข้อมูล (Dashboard & Reporting)](./f09-dashboard.md)
+* [เครื่องมือและเทคโนโลยี (Technologies and Tools)](./technology.md)
 
 ---
 *หมายเหตุ: สามารถตรวจสอบรายละเอียดแต่ละฟีเจอร์ได้โดยคลิกที่ลิงก์ด้านบน*
