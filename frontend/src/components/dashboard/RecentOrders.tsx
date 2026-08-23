@@ -33,7 +33,7 @@ export default function RecentOrders() {
         {recentOrders.map((order) => (
           <li
             key={order.orderId}
-            className="px-6 py-3.5 border-b border-gray-100 last:border-b-0"
+            className="px-6 py-3.5 border-b border-gray-100"
           >
             <div className="flex items-center gap-2.5">
               <span

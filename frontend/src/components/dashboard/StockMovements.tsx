@@ -11,7 +11,7 @@ export default function StockMovements() {
       {/* Movement List */}
       <ul>
         {stockMovements.map((movement) => (
-          <li key={movement.sku} className="px-6 py-4 border-b border-gray-100 last:border-b-0">
+          <li key={movement.sku} className="px-6 py-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
               <span className="font-medium text-gray-900">{movement.sku}</span>
               <span

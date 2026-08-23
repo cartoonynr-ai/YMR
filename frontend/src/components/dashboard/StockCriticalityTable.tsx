@@ -34,7 +34,7 @@ export default function StockCriticalityTable() {
         </thead>
         <tbody>
           {stockCriticality.map((item) => (
-            <tr key={item.sku} className="border-b border-gray-100 last:border-b-0">
+            <tr key={item.sku} className="border-b border-gray-100">
               <td className="px-6 py-4">
                 <div className="font-medium text-gray-900">{item.name}</div>
                 <div className="text-xs text-gray-400 mt-0.5">SKU: {item.sku}</div>

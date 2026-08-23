@@ -9,10 +9,16 @@ export default function KpiCards() {
           key={kpi.id}
           className="bg-white p-5 rounded-xl shadow-sm border border-gray-100"
         >
-          <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+          <h3 className={`text-xs font-medium uppercase tracking-wider mb-1 ${
+            kpi.id === 'low-stock-alert' ? 'text-red-600' : 'text-gray-500'
+          }`}>
             {kpi.title}
           </h3>
-          <div className="text-3xl font-bold text-gray-900">{kpi.value}</div>
+          <div className={`text-3xl font-bold ${
+            kpi.id === 'low-stock-alert' ? 'text-red-600' : 'text-gray-900'
+          }`}>
+            {kpi.value}
+          </div>
           {kpi.breakdown ? (
             <p className="text-sm text-gray-500 mt-1">
               {kpi.breakdown
