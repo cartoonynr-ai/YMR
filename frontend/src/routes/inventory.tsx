@@ -416,7 +416,7 @@ function Inventory() {
             }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 focus:bg-white border border-gray-200 focus:border-primary rounded-lg focus:outline-none transition-all placeholder-gray-400"
+            className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none transition-all placeholder-gray-400"
           />
         </div>
       </div>
@@ -701,7 +701,7 @@ function Inventory() {
                     placeholder="Enter Name Product"
                     value={productForm.name || ''}
                     onChange={(e) => setProductForm((f) => ({ ...f, name: e.target.value }))}
-                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 focus:bg-white"
+                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-gray-50/50"
                   />
                 </div>
 
@@ -718,7 +718,7 @@ function Inventory() {
                       disabled={!!editingProduct} // SKU shouldn't be edited once created
                       value={productForm.sku || ''}
                       onChange={(e) => setProductForm((f) => ({ ...f, sku: e.target.value }))}
-                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 focus:bg-white disabled:opacity-50 disabled:bg-gray-100"
+                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-gray-50/50 disabled:opacity-50"
                     />
                   </div>
 
@@ -732,7 +732,7 @@ function Inventory() {
                       placeholder="Enter Barcode"
                       value={productForm.barcode || ''}
                       onChange={(e) => setProductForm((f) => ({ ...f, barcode: e.target.value }))}
-                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 focus:bg-white"
+                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-gray-50/50"
                     />
                   </div>
                 </div>
@@ -748,7 +748,7 @@ function Inventory() {
                       placeholder="Enter Brand"
                       value={productForm.brand || ''}
                       onChange={(e) => setProductForm((f) => ({ ...f, brand: e.target.value }))}
-                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 focus:bg-white"
+                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
                     />
                   </div>
 
@@ -762,7 +762,7 @@ function Inventory() {
                       placeholder="Enter Compatibility"
                       value={productForm.compatibility || ''}
                       onChange={(e) => setProductForm((f) => ({ ...f, compatibility: e.target.value }))}
-                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 focus:bg-white"
+                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
                     />
                   </div>
                 </div>
@@ -776,7 +776,7 @@ function Inventory() {
                     <select
                       value={productForm.category || ''}
                       onChange={(e) => setProductForm((f) => ({ ...f, category: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:border-primary focus:outline-none text-sm bg-white"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm bg-white"
                     >
                       {categories.map((c) => (
                         <option key={c.name} value={c.name}>
@@ -798,7 +798,7 @@ function Inventory() {
                       placeholder="Enter Price"
                       value={productForm.price === 0 ? '' : productForm.price}
                       onChange={(e) => setProductForm((f) => ({ ...f, price: Number(e.target.value) }))}
-                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 focus:bg-white"
+                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
                     />
                   </div>
                 </div>
@@ -816,7 +816,7 @@ function Inventory() {
                       placeholder="Enter Stock QTY"
                       value={productForm.qty === 0 ? '' : productForm.qty}
                       onChange={(e) => setProductForm((f) => ({ ...f, qty: Number(e.target.value) }))}
-                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 focus:bg-white"
+                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
                     />
                   </div>
 
@@ -832,7 +832,7 @@ function Inventory() {
                       placeholder="Enter Threshold"
                       value={productForm.threshold === 0 ? '' : productForm.threshold}
                       onChange={(e) => setProductForm((f) => ({ ...f, threshold: Number(e.target.value) }))}
-                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 focus:bg-white"
+                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
                     />
                   </div>
                 </div>
@@ -888,7 +888,7 @@ function Inventory() {
                     placeholder="Engine Oil, Spark Plugs"
                     value={categoryForm.name || ''}
                     onChange={(e) => setCategoryForm((f) => ({ ...f, name: e.target.value }))}
-                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 focus:bg-white disabled:opacity-50 disabled:bg-gray-100"
+                    className="w-full px-3.5 py-2 border rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 disabled:opacity-50"
                   />
                 </div>
 
@@ -903,7 +903,7 @@ function Inventory() {
                     placeholder="น้ำมันเครื่อง, หัวเทียน"
                     value={categoryForm.thaiName || ''}
                     onChange={(e) => setCategoryForm((f) => ({ ...f, thaiName: e.target.value }))}
-                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 focus:bg-white"
+                    className="w-full px-3.5 py-2 border rounded-lg focus:border-primary focus:outline-none text-sm transition-all focus:bg-white"
                   />
                 </div>
               </div>
