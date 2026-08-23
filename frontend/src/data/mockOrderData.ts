@@ -20,7 +20,7 @@ export interface Order {
 }
 
 const KEYS = {
-  ORDERS: 'ymr_orders',
+  ORDERS: 'ymr_orders_v3',
 }
 
 const getFormattedDate = (): string => {
@@ -34,11 +34,9 @@ const getFormattedDate = (): string => {
 }
 
 const initialOrders: Order[] = [
-  { id: '#ORD-9021', channel: 'LINE', customerName: 'Somchai', customerPhone: '081-234-5678', address: '9/9 หมู่9 กว้าหน้า ขามใหญ่ เมืองอุบลราชธานี อุบลราชธานี 34000', items: [], total: 5900, status: 'Awaiting payment', date: '2026-08-20 13:42' },
-  { id: '#ORD-9020', channel: 'FB', customerName: 'Nattapon', customerPhone: '089-556-1140', address: '-', items: [], total: 2290, status: 'Paid', date: '2026-08-20 11:18' },
-  { id: '#ORD-9019', channel: 'POS', customerName: 'Walk-in', customerPhone: '-', address: '-', items: [], total: 680, status: 'Completed', date: '2026-08-20 10:55' },
-  { id: '#ORD-9018', channel: 'LINE', customerName: 'Praewa', customerPhone: '062-870-3321', address: '-', items: [], total: 4300, status: 'Completed', date: '2026-08-19 16:04' },
-  { id: '#ORD-9017', channel: 'FB', customerName: 'Anucha', customerPhone: '084-113-9902', address: '-', items: [], total: 620, status: 'Cancelled', date: '2026-08-19 09:31' },
+  { id: '#ORD-9021', channel: 'LINE', customerName: 'Somchai Kittipong', customerPhone: '0812345678', address: '{"houseNumber":"9/9 หมู่9","street":"ก้าวหน้า","subDistrict":"ขามใหญ่","district":"เมืองอุบลราชธานี","province":"อุบลราชธานี","zipcode":"34000"}', items: [], total: 5900, status: 'Awaiting payment', date: '2026-08-20 13:42' },
+  { id: '#ORD-9020', channel: 'FB', customerName: 'Nattapon Wongsa', customerPhone: '089-556-1140', address: '-', items: [], total: 2290, status: 'Paid', date: '2026-08-20 11:18' },
+  { id: '#ORD-9019', channel: 'POS', customerName: 'Walk-in counter', customerPhone: '-', address: '-', items: [], total: 680, status: 'Completed', date: '2026-08-20 10:55' },
 ]
 
 export const initOrderData = () => {

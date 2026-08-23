@@ -9,8 +9,9 @@ import {
   Package,
   CreditCard
 } from 'lucide-react'
-import { getProducts, Product } from '../data/mockInventory'
-import { getOrders, createOrder, Order } from '../data/mockOrderData'
+import { getProducts, type Product } from '../data/mockInventory'
+import { searchAddressByZipcode } from 'thai-address-database'
+import { getOrders, createOrder, type Order } from '../data/mockOrderData'
 
 export const Route = createFileRoute('/order')({
   beforeLoad: () => {
@@ -34,13 +35,72 @@ function OrderPage() {
   const [customerPhone, setCustomerPhone] = useState('')
   
   // Address State
-  const [useSameAddress, setUseSameAddress] = useState(true)
-  const [addressLine1, setAddressLine1] = useState('9/9 หมู่9')
-  const [street, setStreet] = useState('ก้าวหน้า')
-  const [subDistrict, setSubDistrict] = useState('ขามใหญ่')
-  const [district, setDistrict] = useState('เมืองอุบลราชธานี')
-  const [province, setProvince] = useState('อุบลราชธานี')
-  const [zipcode, setZipcode] = useState('34000')
+  interface AddressData {
+    id: number;
+    houseNumber: string;
+    street: string;
+    subDistrict: string;
+    district: string;
+    province: string;
+    zipcode: string;
+  }
+  const [addresses, setAddresses] = useState<AddressData[]>([{
+    id: 1, houseNumber: '', street: '', subDistrict: '', district: '', province: '', zipcode: ''
+  }])
+  const [selectedAddressId, setSelectedAddressId] = useState<number>(1)
+  const [addressSuggestions, setAddressSuggestions] = useState<{[id: number]: any[]}>({})
+
+  const handleZipcodeChange = (id: number, val: string) => {
+    updateAddress(id, 'zipcode', val);
+    const zip = val.replace(/\D/g, '').slice(0, 5);
+    
+    if (zip.length === 5) {
+      const results = searchAddressByZipcode(zip);
+      if (results.length === 1) {
+        updateAddress(id, 'subDistrict', results[0].district);
+        updateAddress(id, 'district', results[0].amphoe);
+        updateAddress(id, 'province', results[0].province);
+        setAddressSuggestions(prev => ({ ...prev, [id]: [] }));
+      } else if (results.length > 1) {
+        setAddressSuggestions(prev => ({ ...prev, [id]: results }));
+      } else {
+        setAddressSuggestions(prev => ({ ...prev, [id]: [] }));
+      }
+    } else {
+      setAddressSuggestions(prev => ({ ...prev, [id]: [] }));
+      updateAddress(id, 'subDistrict', '');
+      updateAddress(id, 'district', '');
+      updateAddress(id, 'province', '');
+    }
+  }
+
+  const selectSuggestion = (id: number, suggestion: any) => {
+    updateAddress(id, 'subDistrict', suggestion.district);
+    updateAddress(id, 'district', suggestion.amphoe);
+    updateAddress(id, 'province', suggestion.province);
+    updateAddress(id, 'zipcode', String(suggestion.zipcode));
+    setAddressSuggestions(prev => ({ ...prev, [id]: [] }));
+  }
+
+  const handleAddAddress = () => {
+    const newId = addresses.length > 0 ? Math.max(...addresses.map(a => a.id)) + 1 : 1
+    setAddresses([...addresses, { id: newId, houseNumber: '', street: '', subDistrict: '', district: '', province: '', zipcode: '' }])
+    setSelectedAddressId(newId)
+  }
+
+  const updateAddress = (id: number, field: keyof AddressData, value: string) => {
+    setAddresses(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a))
+  }
+
+  const canFillAddress = !!customerName.trim() && customerPhone.replace(/\D/g, '').length === 10;
+  const isAllAddressesValid = addresses.every(addr => 
+    addr.houseNumber.trim() !== '' && 
+    addr.subDistrict.trim() !== '' && 
+    addr.district.trim() !== '' && 
+    addr.province.trim() !== '' && 
+    addr.zipcode.trim() !== ''
+  );
+  const canAddAddress = canFillAddress && isAllAddressesValid;
 
   // Items State
   const [orderItems, setOrderItems] = useState<{sku: string, qty: number}[]>([])
@@ -101,9 +161,15 @@ function OrderPage() {
       return
     }
 
-    const fullAddress = useSameAddress 
-      ? 'ใช้ที่อยู่เดียวกับทะเบียนบ้าน'
-      : `${addressLine1} ถนน${street} ต.${subDistrict} อ.${district} จ.${province} ${zipcode}`
+    const selectedAddress = addresses.find(a => a.id === selectedAddressId) || addresses[0]
+    const fullAddress = JSON.stringify({
+      houseNumber: selectedAddress.houseNumber,
+      street: selectedAddress.street,
+      subDistrict: selectedAddress.subDistrict,
+      district: selectedAddress.district,
+      province: selectedAddress.province,
+      zipcode: selectedAddress.zipcode
+    })
 
     const items = orderItems.map(item => {
       const p = products.find(prod => prod.sku === item.sku)!
@@ -122,7 +188,7 @@ function OrderPage() {
       address: channel === 'STOREFRONT' ? '-' : fullAddress,
       items,
       total: calculateTotal(),
-      status: isPaid ? 'Paid' : (payment === 'CASH ON DEL.' ? 'Awaiting payment' : 'Awaiting payment')
+      status: isPaid ? 'Paid' : (payment === 'CASH ON DELIVERY' ? 'Awaiting payment' : 'Awaiting payment')
     }
 
     const result = createOrder(newOrderData)
@@ -132,6 +198,8 @@ function OrderPage() {
       setOrderItems([])
       setCustomerName('')
       setCustomerPhone('')
+      setAddresses([{ id: 1, houseNumber: '', street: '', subDistrict: '', district: '', province: '', zipcode: '' }])
+      setSelectedAddressId(1)
       loadData()
     } else {
       alert(result.error)
@@ -144,27 +212,29 @@ function OrderPage() {
 
   const getStatusColor = (status: string) => {
     switch(status) {
-      case 'Awaiting payment': return 'bg-amber-100 text-amber-800 border-amber-200'
-      case 'Paid': return 'bg-sky-100 text-sky-800 border-sky-200'
-      case 'Completed': return 'bg-emerald-100 text-emerald-800 border-emerald-200'
-      case 'Cancelled': return 'bg-rose-100 text-rose-800 border-rose-200'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+      case 'Awaiting payment': return 'text-[#da8018] bg-[#fff3d7] rounded-xl'
+      case 'Paid': return 'text-[#276ed2] bg-[#e7f3ff] rounded-xl'
+      case 'Completed': return 'text-[#31976a] bg-[#e0faec] rounded-xl'
+      case 'Cancelled': return 'text-[#e70029] bg-[#ffeded] rounded-xl'
+      default: return 'bg-gray-100 text-gray-800 rounded-xl'
     }
   }
   
   const getChannelColor = (ch: string) => {
     switch(ch) {
-      case 'LINE': return 'bg-green-500 text-white'
-      case 'FACEBOOK': return 'bg-blue-600 text-white'
-      case 'STOREFRONT': return 'bg-gray-800 text-white'
-      default: return 'bg-gray-500 text-white'
+      case 'LINE': return 'text-[#1f956a] bg-[#e0faec] rounded-xl'
+      case 'FACEBOOK': 
+      case 'FB': return 'text-[#276ed2] bg-[#e7f3ff] rounded-xl'
+      case 'STOREFRONT': 
+      case 'POS': return 'text-[#1d295b] bg-[#f1f5f9] rounded-xl'
+      default: return 'bg-gray-500 text-white rounded-xl'
     }
   }
 
   return (
     <AppLayout>
       <div className="min-h-screen bg-[#F3F4F6] text-gray-900 pb-24 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-white to-transparent opacity-50 pointer-events-none"></div>
+        <div className="absolute top-0 left-0 w-full h-96 bg-linear-to-b from-white to-transparent opacity-50 pointer-events-none"></div>
         
         <div className="max-w-[1600px] mx-auto p-4 md:p-8 relative z-10">
           
@@ -181,7 +251,6 @@ function OrderPage() {
               <div className="flex justify-between items-end mb-6">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900 tracking-tight">Order history</h2>
-                  <p className="text-sm text-gray-500 font-medium mt-1">ประวัติคำสั่งซื้อ</p>
                 </div>
                 <div className="text-sm font-bold text-gray-400 bg-gray-50 px-4 py-2 rounded-full">
                   {orders.length} records
@@ -189,7 +258,7 @@ function OrderPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[600px]">
+                <table className="w-full text-left border-collapse min-w-150">
                   <thead>
                     <tr className="border-b-2 border-gray-100">
                       <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider">Order</th>
@@ -208,8 +277,8 @@ function OrderPage() {
                           <div className="text-[11px] text-gray-500 font-medium mt-1">{order.date}</div>
                         </td>
                         <td className="py-4 px-4">
-                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-sm ${getChannelColor(order.channel)}`}>
-                            {order.channel}
+                          <span className={`text-[10px] font-bold px-2.5 py-1 ${getChannelColor(order.channel)}`}>
+                            {order.channel === 'FACEBOOK' ? 'FB' : order.channel === 'STOREFRONT' ? 'POS' : order.channel}
                           </span>
                         </td>
                         <td className="py-4 px-4">
@@ -220,7 +289,7 @@ function OrderPage() {
                           {formatPrice(order.total)}
                         </td>
                         <td className="py-4 px-4 text-center">
-                          <span className={`text-[11px] font-bold px-3 py-1.5 rounded-full border ${getStatusColor(order.status)} whitespace-nowrap`}>
+                          <span className={`text-[11px] font-bold px-3 py-1.5 ${getStatusColor(order.status)} whitespace-nowrap`}>
                             {order.status}
                           </span>
                         </td>
@@ -237,7 +306,7 @@ function OrderPage() {
             </div>
 
             <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-gray-900 to-gray-400"></div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-gray-900 to-gray-400"></div>
               
               <h2 className="text-xl font-bold text-gray-900 mb-6 tracking-tight">Record new order</h2>
               
@@ -250,7 +319,7 @@ function OrderPage() {
                       <button
                         key={ch}
                         onClick={() => setChannel(ch)}
-                        className={`flex-1 text-[11px] font-bold py-2.5 rounded-lg transition-all ${channel === ch ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        className={`flex-1 text-[11px] font-bold py-2.5 rounded-lg transition-all ${channel === ch ? 'text-[#00b6d5] bg-[#e6f8fb] border border-[#66d4e6] shadow-sm' : 'text-gray-500 hover:text-gray-700 border border-transparent'}`}
                       >
                         {ch}
                       </button>
@@ -259,7 +328,7 @@ function OrderPage() {
                 </section>
 
                 <section>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                     <Type className="w-3 h-3" />
                     Recipient Info
                   </label>
@@ -274,8 +343,37 @@ function OrderPage() {
                     <input 
                       type="tel" 
                       placeholder="Phone number" 
+                      maxLength={10}
                       value={customerPhone}
-                      onChange={e => setCustomerPhone(e.target.value)}
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                        setCustomerPhone(val)
+                        const digits = val
+                        if (digits.length === 10) {
+                          const pastOrders = orders.filter(o => o.customerPhone === val || o.customerPhone === digits || o.customerPhone.replace(/\D/g, '') === digits)
+                          if (pastOrders.length > 0) {
+                            if (!customerName) {
+                               const match = pastOrders.find(o => o.customerName && o.customerName !== 'Walk-in' && o.customerName !== 'Walk-in counter');
+                               if (match) setCustomerName(match.customerName)
+                            }
+                            const foundAddresses: AddressData[] = []
+                            pastOrders.forEach(o => {
+                              if (o.address && o.address !== '-' && o.address.startsWith('{')) {
+                                try {
+                                  const parsed = JSON.parse(o.address)
+                                  if (!foundAddresses.some(a => a.houseNumber === parsed.houseNumber && a.district === parsed.district)) {
+                                    foundAddresses.push({ ...parsed, id: foundAddresses.length + 1 })
+                                  }
+                                } catch(err) {}
+                              }
+                            })
+                            if (foundAddresses.length > 0) {
+                              setAddresses(foundAddresses)
+                              setSelectedAddressId(foundAddresses[0].id)
+                            }
+                          }
+                        }
+                      }}
                       className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent px-4 py-3 outline-none transition-all placeholder:text-gray-400 font-medium"
                     />
                   </div>
@@ -286,40 +384,77 @@ function OrderPage() {
                     <div className="flex justify-between items-center mb-3">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                         <MapPin className="w-3 h-3" />
-                        ที่อยู่จัดส่ง (1)
+                        Shipping address ({addresses.length})
                       </label>
-                      <button className="text-xs font-bold text-gray-900 hover:underline">+ เพิ่มที่อยู่</button>
+                      <button 
+                        type="button" 
+                        onClick={handleAddAddress} 
+                        disabled={!canAddAddress}
+                        className={`text-xs font-bold ${canAddAddress ? 'text-gray-900 hover:underline' : 'text-gray-300 cursor-not-allowed'}`}
+                      >
+                        +Add address
+                      </button>
                     </div>
                     
-                    <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full border-4 border-gray-900 bg-white"></div>
-                          <span className="text-sm font-bold text-gray-900">ที่อยู่ 1</span>
-                          <span className="text-[10px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-sm font-bold">ใช้จัดส่ง</span>
+                    <div className={`space-y-4 transition-opacity duration-300 ${!canFillAddress ? 'opacity-40 pointer-events-none' : ''}`}>
+                      {addresses.map((addr, idx) => (
+                        <div key={addr.id} className={`rounded-xl border p-4 space-y-4 transition-colors ${selectedAddressId === addr.id ? 'bg-gray-50 border-blue-200' : 'bg-white border-gray-100 opacity-60 hover:opacity-100'}`}>
+                          <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input 
+                                type="radio" 
+                                name="addressSelection"
+                                checked={selectedAddressId === addr.id} 
+                                onChange={() => setSelectedAddressId(addr.id)}
+                                disabled={!canFillAddress}
+                                className="w-4 h-4 accent-blue-500 cursor-pointer disabled:opacity-50" 
+                              />
+                              <span className="text-sm font-bold text-gray-900">address ({idx + 1})</span>
+                              {selectedAddressId === addr.id && (
+                                <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-sm font-bold">For shipping</span>
+                              )}
+                            </label>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-3 mt-3">
+                            <div className="flex flex-col gap-1 col-span-1">
+                              <label className="text-[10px] font-bold text-gray-500">House number</label>
+                              <input type="text" placeholder="House number" value={addr.houseNumber} onChange={e => updateAddress(addr.id, 'houseNumber', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:bg-gray-100 disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
+                            </div>
+                            <div className="flex flex-col gap-1 col-span-1">
+                              <label className="text-[10px] font-bold text-gray-500">Street</label>
+                              <input type="text" placeholder="Street" value={addr.street} onChange={e => updateAddress(addr.id, 'street', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:bg-gray-100 disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
+                            </div>
+                            <div className="relative flex flex-col gap-1 col-span-1">
+                              <label className="text-[10px] font-bold text-gray-500">Postal Code</label>
+                              <input type="text" placeholder="Postal Code" maxLength={5} value={addr.zipcode} onChange={e => handleZipcodeChange(addr.id, e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:bg-gray-100 disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
+                              
+                              {addressSuggestions[addr.id]?.length > 0 && (
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
+                                  {addressSuggestions[addr.id].map((sug, i) => (
+                                    <div key={i} onClick={() => selectSuggestion(addr.id, sug)} className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-xs border-b border-gray-100 last:border-0">
+                                      <div className="font-bold text-gray-800">{sug.district}</div>
+                                      <div className="text-gray-500 text-[10px]">{sug.amphoe}, {sug.province}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-1 col-span-1">
+                              <label className="text-[10px] font-bold text-gray-500">Subdistrict</label>
+                              <input type="text" placeholder="Subdistrict" value={addr.subDistrict} onChange={e => updateAddress(addr.id, 'subDistrict', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:bg-gray-100 disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
+                            </div>
+                            <div className="flex flex-col gap-1 col-span-1">
+                              <label className="text-[10px] font-bold text-gray-500">District</label>
+                              <input type="text" placeholder="District" value={addr.district} onChange={e => updateAddress(addr.id, 'district', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:bg-gray-100 disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
+                            </div>
+                            <div className="flex flex-col gap-1 col-span-1">
+                              <label className="text-[10px] font-bold text-gray-500">Province</label>
+                              <input type="text" placeholder="Province" value={addr.province} onChange={e => updateAddress(addr.id, 'province', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:bg-gray-100 disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={useSameAddress}
-                          onChange={e => setUseSameAddress(e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900" 
-                        />
-                        <span className="text-xs font-medium text-gray-600">ใช้ที่อยู่เดียวกับทะเบียนบ้าน</span>
-                      </label>
-
-                      {!useSameAddress && (
-                        <div className="grid grid-cols-3 gap-3 mt-3">
-                          <input type="text" placeholder="บ้านเลขที่" value={addressLine1} onChange={e => setAddressLine1(e.target.value)} className="col-span-1 w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none" />
-                          <input type="text" placeholder="ถนน" value={street} onChange={e => setStreet(e.target.value)} className="col-span-1 w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none" />
-                          <input type="text" placeholder="ตำบล" value={subDistrict} onChange={e => setSubDistrict(e.target.value)} className="col-span-1 w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none" />
-                          <input type="text" placeholder="อำเภอ" value={district} onChange={e => setDistrict(e.target.value)} className="col-span-2 w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none" />
-                          <input type="text" placeholder="จังหวัด" value={province} onChange={e => setProvince(e.target.value)} className="col-span-2 w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none" />
-                          <input type="text" placeholder="รหัสไปรษณีย์" value={zipcode} onChange={e => setZipcode(e.target.value)} className="col-span-2 w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none" />
-                        </div>
-                      )}
+                      ))}
                     </div>
                   </section>
                 )}
@@ -328,8 +463,9 @@ function OrderPage() {
                   <div className="flex justify-between items-center mb-3">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                       <Package className="w-3 h-3" />
-                      รายการสินค้า ({orderItems.length})
+                      Product List ({orderItems.length})
                     </label>
+                    <button className="text-xs font-bold text-gray-900 hover:underline">+ Add item</button>
                   </div>
 
                   <div className="space-y-2 mb-4">
@@ -377,26 +513,26 @@ function OrderPage() {
                   </div>
 
                   <div className="flex justify-between items-end border-t border-gray-100 pt-4">
-                    <span className="text-sm font-bold text-gray-500">รวม / Total</span>
+                    <span className="text-sm font-bold text-gray-500">Total</span>
                     <span className="text-2xl font-black text-gray-900">{formatPrice(calculateTotal())}</span>
                   </div>
                 </section>
 
                 <section className="bg-gray-900 rounded-2xl p-5 text-white relative overflow-hidden group">
-                  <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent mix-blend-overlay pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
+                  <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-white to-transparent mix-blend-overlay pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
                   
                   <div className="relative z-10">
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                       <CreditCard className="w-3 h-3" />
                       Payment Method
                     </label>
                     
                     <div className="flex p-1 bg-gray-800 rounded-xl mb-5">
-                      {['BANK TRANSFER', 'CASH ON DEL.'].map(method => (
+                      {['BANK TRANSFER', 'CASH ON DELIVERY'].map(method => (
                         <button
                           key={method}
                           onClick={() => setPayment(method)}
-                          className={`flex-1 text-[10px] font-bold py-2.5 rounded-lg transition-all ${payment === method ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}
+                          className={`flex-1 text-[10px] font-bold py-2.5 rounded-lg transition-all ${payment === method ? 'text-[#00b6d5] bg-[#e6f8fb] border border-[#66d4e6] shadow-md' : 'text-gray-400 hover:text-white border border-transparent'}`}
                         >
                           {method}
                         </button>
@@ -418,13 +554,12 @@ function OrderPage() {
                         </div>
                       </div>
                       <span className="text-[11px] font-medium text-gray-300 group-hover/check:text-white transition-colors">
-                        Mark as already paid (Status: <span className="font-bold text-sky-400">Paid</span>)
+                        Mark as already paid
                       </span>
                     </label>
 
-                    <button onClick={handleSaveOrder} className="w-full bg-white hover:bg-gray-100 text-gray-900 font-black text-sm py-4 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2">
-                      <Package className="w-4 h-4" />
-                      SAVE ORDER & DEDUCT STOCK
+                    <button onClick={handleSaveOrder} className="w-full text-white bg-[#07090c] hover:bg-gray-800 font-black text-sm py-4 rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2">
+                      Save order & deduct stock
                     </button>
                   </div>
                 </section>
