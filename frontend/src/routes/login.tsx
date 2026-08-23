@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Eye, EyeOff, ShieldCheck, Store } from 'lucide-react'
 
@@ -7,10 +7,10 @@ export const Route = createFileRoute('/login')({
 })
 
 function Login() {
+  const navigate = useNavigate()
   const [role, setRole] = useState<'admin' | 'staff'>('admin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -20,7 +20,8 @@ function Login() {
     // Simulate login
     setTimeout(() => {
       setIsLoading(false)
-      alert(`Login clicked\nRole: ${role}\nEmail: ${email}\nRemember: ${rememberMe}`)
+      localStorage.setItem('token', 'dummy-token-for-ymr')
+      navigate({ to: '/' })
     }, 1000)
   }
 
@@ -91,7 +92,8 @@ function Login() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="block w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-primary focus:border-primary sm:text-sm"
+              placeholder="Enter your e-mail"
+              className="block w-full px-4 py-3 border border-gray-300 rounded-2xl focus:ring-primary sm:text-sm"
               required
             />
           </div>
@@ -104,7 +106,8 @@ function Login() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="block w-full pl-4 pr-12 py-3 border border-gray-300 rounded-2xl focus:ring-primary focus:border-primary sm:text-sm"
+                placeholder="Enter your password"
+                className="block w-full pl-4 pr-12 py-3 border border-gray-300 rounded-2xl focus:ring-primary sm:text-sm"
                 required
               />
               <button
@@ -118,16 +121,7 @@ function Login() {
           </div>
 
           {/* Remember me & Forgot Password */}
-          <div className="flex items-center justify-between text-sm">
-            <label className="flex items-center text-gray-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary mr-2"
-              />
-              จดจำการเข้าสู่ระบบ
-            </label>
+          <div className="flex items-center justify-end text-sm">
             <a href="#" className="text-primary hover:text-primary-dark font-medium">
               ลืมรหัสผ่าน?
             </a>
