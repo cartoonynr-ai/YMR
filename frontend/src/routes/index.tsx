@@ -1,37 +1,49 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
 
 export const Route = createFileRoute('/')({
-  component: Index,
+  beforeLoad: () => {
+    // For now, redirect to login by default
+    // throw redirect({ to: '/login' })
+  },
+  component: Dashboard,
 })
 
-function Index() {
-  const { isPending, error, data } = useQuery({
-    queryKey: ['repoData'],
-    queryFn: () =>
-      fetch('https://api.github.com/repos/TanStack/router').then((res) =>
-        res.json(),
-      ),
-  })
-
+function Dashboard() {
   return (
-    <div className="p-2">
-      <h3>Welcome Home!</h3>
-      <div className="mt-4 p-4 border rounded">
-        <h4 className="font-bold">React Query Example:</h4>
-        {isPending ? (
-          'Loading...'
-        ) : error ? (
-          'An error has occurred: ' + error.message
-        ) : (
-          <div>
-            <h1>{data.name}</h1>
-            <p>{data.description}</p>
-            <strong>👀 {data.subscribers_count}</strong>{' '}
-            <strong>✨ {data.stargazers_count}</strong>{' '}
-            <strong>🍴 {data.forks_count}</strong>
+    <div className="flex h-screen bg-surface">
+      {/* Sidebar */}
+      <div className="w-64 bg-primary text-white p-4">
+        <div className="flex items-center gap-2 font-bold text-xl mb-8">
+          <img src="/logo.png" alt="Logo" className="w-8 h-8 bg-white p-1 rounded" />
+          <span>Admin System</span>
+        </div>
+        <nav className="space-y-2">
+          <div className="p-2 bg-primary-dark rounded cursor-pointer">Dashboard</div>
+          <div className="p-2 hover:bg-primary-dark rounded cursor-pointer">Products</div>
+          <div className="p-2 hover:bg-primary-dark rounded cursor-pointer">POS</div>
+        </nav>
+      </div>
+      
+      {/* Main Content */}
+      <div className="flex-1 p-8">
+        <header className="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-sm">
+          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+          <div className="text-gray-500">Welcome, Admin</div>
+        </header>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="text-gray-500 mb-2">Total Sales</h3>
+            <div className="text-3xl font-bold">฿0.00</div>
           </div>
-        )}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="text-gray-500 mb-2">Orders Today</h3>
+            <div className="text-3xl font-bold">0</div>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="text-gray-500 mb-2">Low Stock Alerts</h3>
+            <div className="text-3xl font-bold text-red-500">0</div>
+          </div>
+        </div>
       </div>
     </div>
   )
