@@ -9,9 +9,9 @@ const channelBadge: Record<OrderChannel, string> = {
 }
 
 const statusBadge: Record<OrderStatus, string> = {
-  'Awaiting payment': 'text-amber-600',
-  Paid: 'text-blue-600',
-  Completed: 'text-green-600',
+  'Awaiting payment': 'bg-[#fff3d7] text-amber-600',
+  Paid: 'bg-[#e8f4ff] text-blue-600',
+  Completed: 'bg-[#e6f7ff] text-green-600',
 }
 
 export default function RecentOrders() {
@@ -46,7 +46,7 @@ export default function RecentOrders() {
             </div>
             <div className="flex items-center mt-1.5 pl-0.5">
               <span className="text-sm text-gray-500">Customer: {order.customer}</span>
-              <span className={`ml-auto text-sm font-medium ${statusBadge[order.status]}`}>
+              <span className={`ml-auto text-sm font-medium rounded-xl px-2 ${statusBadge[order.status]}`}>
                 {order.status}
               </span>
             </div>

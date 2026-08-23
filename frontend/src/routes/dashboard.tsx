@@ -19,6 +19,7 @@ export const Route = createFileRoute('/dashboard')({
 function Dashboard() {
   return (
     <AppLayout>
+      <h1 className="text-2xl font-bold mb-4 text-gray-900">Dashboard Overview</h1>
       {/* KPI Cards */}
       <KpiCards />
 

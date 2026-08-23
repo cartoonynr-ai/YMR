@@ -2,10 +2,10 @@ import { stockMovements } from '../../data/mockDashboard'
 
 export default function StockMovements() {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+    <div className="bg-[#0f172b] rounded-xl shadow-sm border border-gray-100">
       {/* Panel Header */}
       <div className="px-6 py-4 border-b border-gray-100">
-        <h2 className="font-semibold text-gray-900">Latest stock movements</h2>
+        <h2 className="font-semibold text-[#00b6d5]">Latest stock movements</h2>
       </div>
 
       {/* Movement List */}
@@ -13,7 +13,7 @@ export default function StockMovements() {
         {stockMovements.map((movement) => (
           <li key={movement.sku} className="px-6 py-4 border-b border-gray-100">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-900">{movement.sku}</span>
+              <span className="font-medium text-white">{movement.sku}</span>
               <span
                 className={`font-bold ${movement.change >= 0 ? 'text-green-600' : 'text-red-600'}`}
               >
