@@ -103,45 +103,41 @@ function OrderPage() {
   const canAddAddress = canFillAddress && isAllAddressesValid;
 
   // Items State
-  const [orderItems, setOrderItems] = useState<{sku: string, qty: number}[]>([])
-  const [selectedSku, setSelectedSku] = useState('')
-  const [itemQty, setItemQty] = useState(1)
+  const [orderItems, setOrderItems] = useState<{id: string, sku: string, qty: number}[]>([])
   
   const loadData = () => {
     setOrders(getOrders())
     const invProducts = getProducts()
     setProducts(invProducts)
-    if (invProducts.length > 0 && !selectedSku) {
-      const firstAvailable = invProducts.find(p => p.qty > 0)
-      if (firstAvailable) setSelectedSku(firstAvailable.sku)
-    }
   }
 
   useEffect(() => {
     loadData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAddItem = () => {
-    if (!selectedSku) return
-    const product = products.find(p => p.sku === selectedSku)
-    if (!product) return
-    if (itemQty < 1 || itemQty > product.qty) {
-      alert('จำนวนสินค้าไม่ถูกต้อง หรือเกินกว่าที่มีในสต๊อก')
-      return
-    }
-    
-    setOrderItems(prev => {
-      const existing = prev.find(i => i.sku === selectedSku)
-      if (existing) {
-        return prev.map(i => i.sku === selectedSku ? { ...i, qty: i.qty + itemQty } : i)
-      }
-      return [...prev, { sku: selectedSku, qty: itemQty }]
-    })
-    setItemQty(1)
+  const handleAddRow = () => {
+    setOrderItems(prev => [...prev, { id: Math.random().toString(36).substring(7), sku: '', qty: 1 }])
   }
 
-  const handleRemoveItem = (skuToRemove: string) => {
-    setOrderItems(prev => prev.filter(i => i.sku !== skuToRemove))
+  const handleRemoveRow = (idToRemove: string) => {
+    setOrderItems(prev => prev.filter(i => i.id !== idToRemove))
+  }
+
+  const handleUpdateRow = (id: string, field: 'sku' | 'qty', value: any) => {
+    setOrderItems(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      if (field === 'sku') {
+        return { ...item, sku: value, qty: 1 };
+      }
+      if (field === 'qty') {
+        const product = products.find(p => p.sku === item.sku);
+        let validQty = parseInt(value) || 1;
+        if (validQty < 1) validQty = 1;
+        if (product && validQty > product.qty) validQty = product.qty;
+        return { ...item, qty: validQty };
+      }
+      return item;
+    }))
   }
 
   const calculateTotal = () => {
@@ -151,17 +147,41 @@ function OrderPage() {
     }, 0)
   }
 
+  // Toast State
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastType, setToastType] = useState<'error' | 'success'>('error')
+
+  const showToast = (msg: string, type: 'error' | 'success' = 'error') => {
+    setToastMessage(msg)
+    setToastType(type)
+    setTimeout(() => setToastMessage(''), 3000)
+  }
+
   const handleSaveOrder = () => {
     if (orderItems.length === 0) {
-      alert('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ')
+      showToast('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ')
       return
     }
-    if (channel !== 'STOREFRONT' && (!customerName || !customerPhone)) {
-      alert('กรุณากรอกชื่อและเบอร์โทรศัพท์ผู้รับ สำหรับช่องทางออนไลน์')
+    if (orderItems.some(item => !item.sku)) {
+      showToast('กรุณาเลือกสินค้าให้ครบทุกรายการ')
       return
+    }
+    
+    const selectedAddress = addresses.find(a => a.id === selectedAddressId) || addresses[0]
+    
+    if (channel !== 'STOREFRONT') {
+      if (!customerName || !customerPhone) {
+        showToast('กรุณากรอกชื่อและเบอร์โทรศัพท์ผู้รับ สำหรับช่องทางออนไลน์')
+        return
+      }
+      
+      const { houseNumber, street, subDistrict, district, province, zipcode } = selectedAddress
+      if (!houseNumber || !street || !subDistrict || !district || !province || !zipcode) {
+        showToast('กรุณากรอกข้อมูลที่อยู่จัดส่งให้ครบทุกช่อง')
+        return
+      }
     }
 
-    const selectedAddress = addresses.find(a => a.id === selectedAddressId) || addresses[0]
     const fullAddress = JSON.stringify({
       houseNumber: selectedAddress.houseNumber,
       street: selectedAddress.street,
@@ -183,8 +203,8 @@ function OrderPage() {
 
     const newOrderData = {
       channel,
-      customerName: customerName || 'Walk-in',
-      customerPhone: customerPhone || '-',
+      customerName: channel === 'STOREFRONT' ? 'Walk-in' : customerName,
+      customerPhone: channel === 'STOREFRONT' ? '-' : customerPhone,
       address: channel === 'STOREFRONT' ? '-' : fullAddress,
       items,
       total: calculateTotal(),
@@ -193,7 +213,7 @@ function OrderPage() {
 
     const result = createOrder(newOrderData)
     if (result.success) {
-      alert('บันทึกคำสั่งซื้อเรียบร้อย และตัดสต๊อกสำเร็จ!')
+      showToast('บันทึกคำสั่งซื้อเรียบร้อย และตัดสต๊อกสำเร็จ!', 'success')
       // reset form
       setOrderItems([])
       setCustomerName('')
@@ -202,7 +222,7 @@ function OrderPage() {
       setSelectedAddressId(1)
       loadData()
     } else {
-      alert(result.error)
+      showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกคำสั่งซื้อ')
     }
   }
 
@@ -233,6 +253,13 @@ function OrderPage() {
 
   return (
     <AppLayout>
+      {toastMessage && (
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] z-50 flex items-center gap-2 transition-all duration-300 ease-out animate-in fade-in slide-in-from-top-4 ${
+          toastType === 'success' ? 'bg-emerald-500 text-white' : 'bg-gray-900 text-white'
+        }`}>
+          <span className="font-bold text-sm">{toastMessage}</span>
+        </div>
+      )}
       <div className="min-h-screen bg-[#F3F4F6] text-gray-900 pb-24 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-96 bg-linear-to-b from-white to-transparent opacity-50 pointer-events-none"></div>
         
@@ -327,57 +354,59 @@ function OrderPage() {
                   </div>
                 </section>
 
-                <section>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <Type className="w-3 h-3" />
-                    Recipient Info
-                  </label>
-                  <div className="space-y-3">
-                    <input 
-                      type="text" 
-                      placeholder="Recipient name" 
-                      value={customerName}
-                      onChange={e => setCustomerName(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent px-4 py-3 outline-none transition-all placeholder:text-gray-400 font-medium"
-                    />
-                    <input 
-                      type="tel" 
-                      placeholder="Phone number" 
-                      maxLength={10}
-                      value={customerPhone}
-                      onChange={e => {
-                        const val = e.target.value.replace(/\D/g, '').slice(0, 10)
-                        setCustomerPhone(val)
-                        const digits = val
-                        if (digits.length === 10) {
-                          const pastOrders = orders.filter(o => o.customerPhone === val || o.customerPhone === digits || o.customerPhone.replace(/\D/g, '') === digits)
-                          if (pastOrders.length > 0) {
-                            if (!customerName) {
-                               const match = pastOrders.find(o => o.customerName && o.customerName !== 'Walk-in' && o.customerName !== 'Walk-in counter');
-                               if (match) setCustomerName(match.customerName)
-                            }
-                            const foundAddresses: AddressData[] = []
-                            pastOrders.forEach(o => {
-                              if (o.address && o.address !== '-' && o.address.startsWith('{')) {
-                                try {
-                                  const parsed = JSON.parse(o.address)
-                                  if (!foundAddresses.some(a => a.houseNumber === parsed.houseNumber && a.district === parsed.district)) {
-                                    foundAddresses.push({ ...parsed, id: foundAddresses.length + 1 })
-                                  }
-                                } catch(err) {}
+                {channel !== 'STOREFRONT' && (
+                  <section>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <Type className="w-3 h-3" />
+                      Recipient Info
+                    </label>
+                    <div className="space-y-3">
+                      <input 
+                        type="text" 
+                        placeholder="Recipient name" 
+                        value={customerName}
+                        onChange={e => setCustomerName(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent px-4 py-3 outline-none transition-all placeholder:text-gray-400 font-medium"
+                      />
+                      <input 
+                        type="tel" 
+                        placeholder="Phone number" 
+                        maxLength={10}
+                        value={customerPhone}
+                        onChange={e => {
+                          const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                          setCustomerPhone(val)
+                          const digits = val
+                          if (digits.length === 10) {
+                            const pastOrders = orders.filter(o => o.customerPhone === val || o.customerPhone === digits || o.customerPhone.replace(/\D/g, '') === digits)
+                            if (pastOrders.length > 0) {
+                              if (!customerName) {
+                                 const match = pastOrders.find(o => o.customerName && o.customerName !== 'Walk-in' && o.customerName !== 'Walk-in counter');
+                                 if (match) setCustomerName(match.customerName)
                               }
-                            })
-                            if (foundAddresses.length > 0) {
-                              setAddresses(foundAddresses)
-                              setSelectedAddressId(foundAddresses[0].id)
+                              const foundAddresses: AddressData[] = []
+                              pastOrders.forEach(o => {
+                                if (o.address && o.address !== '-' && o.address.startsWith('{')) {
+                                  try {
+                                    const parsed = JSON.parse(o.address)
+                                    if (!foundAddresses.some(a => a.houseNumber === parsed.houseNumber && a.district === parsed.district)) {
+                                      foundAddresses.push({ ...parsed, id: foundAddresses.length + 1 })
+                                    }
+                                  } catch(err) {}
+                                }
+                              })
+                              if (foundAddresses.length > 0) {
+                                setAddresses(foundAddresses)
+                                setSelectedAddressId(foundAddresses[0].id)
+                              }
                             }
                           }
-                        }
-                      }}
-                      className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent px-4 py-3 outline-none transition-all placeholder:text-gray-400 font-medium"
-                    />
-                  </div>
-                </section>
+                        }}
+                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent px-4 py-3 outline-none transition-all placeholder:text-gray-400 font-medium"
+                      />
+                    </div>
+                  </section>
+                )}
 
                 {channel !== 'STOREFRONT' && (
                   <section>
@@ -465,51 +494,47 @@ function OrderPage() {
                       <Package className="w-3 h-3" />
                       Product List ({orderItems.length})
                     </label>
-                    <button className="text-xs font-bold text-gray-900 hover:underline">+ Add item</button>
+                    <button type="button" onClick={handleAddRow} className="text-xs font-bold text-gray-900 hover:underline">+ Add item</button>
                   </div>
 
                   <div className="space-y-2 mb-4">
                     {orderItems.map(item => {
                       const p = products.find(prod => prod.sku === item.sku)
                       return (
-                        <div key={item.sku} className="flex justify-between items-center bg-gray-50 p-2 px-3 rounded-lg border border-gray-100">
-                          <div className="text-xs font-bold text-gray-900">{p?.name} <span className="text-gray-500 font-medium ml-2">x{item.qty}</span></div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs font-black">{formatPrice((p?.price || 0) * item.qty)}</span>
-                            <button onClick={() => handleRemoveItem(item.sku)} className="text-gray-400 hover:text-rose-500">
-                              <X className="w-3 h-3" />
-                            </button>
+                        <div key={item.id} className="flex gap-2 items-center bg-gray-50 p-2 rounded-xl border border-gray-200 shadow-sm">
+                          <div className="flex-1 relative">
+                            <select 
+                              value={item.sku}
+                              onChange={e => handleUpdateRow(item.id, 'sku', e.target.value)}
+                              className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-3 pr-8 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none text-gray-900"
+                            >
+                              <option value="" disabled>เลือกสินค้า...</option>
+                              {products.map(p => {
+                                const isSelectedByOther = orderItems.some(i => i.id !== item.id && i.sku === p.sku)
+                                if (isSelectedByOther) return null
+                                return (
+                                  <option key={p.sku} value={p.sku} disabled={p.qty === 0} className={p.qty === 0 ? "text-gray-400" : ""}>
+                                    {p.name} — {p.qty} left {p.qty === 0 && '(Out of stock)'}
+                                  </option>
+                                )
+                              })}
+                            </select>
+                            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                           </div>
+                          
+                          <input 
+                            type="number" 
+                            value={item.qty}
+                            onChange={e => handleUpdateRow(item.id, 'qty', e.target.value)}
+                            min="1" 
+                            className="w-14 bg-white border border-gray-200 rounded-lg px-2 py-2 text-xs font-medium text-center focus:ring-1 focus:ring-gray-900 outline-none" 
+                          />
+                          <button type="button" onClick={() => handleRemoveRow(item.id)} className="text-gray-400 hover:text-rose-500 p-1 flex-shrink-0">
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
                       )
                     })}
-                  </div>
-
-                  <div className="flex gap-2 items-center mb-4 bg-gray-50 p-2 rounded-xl border border-gray-200 shadow-sm">
-                    <div className="flex-1 relative">
-                      <select 
-                        value={selectedSku}
-                        onChange={e => setSelectedSku(e.target.value)}
-                        className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-3 pr-8 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none text-gray-900"
-                      >
-                        {products.map(p => (
-                          <option key={p.sku} value={p.sku} disabled={p.qty === 0} className={p.qty === 0 ? "text-gray-400" : ""}>
-                            {p.name} — {p.qty} left {p.qty === 0 && '(Out of stock)'}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-                    <input 
-                      type="number" 
-                      value={itemQty}
-                      onChange={e => setItemQty(Number(e.target.value))}
-                      min="1" 
-                      className="w-14 bg-white border border-gray-200 rounded-lg px-2 py-2 text-xs font-medium text-center focus:ring-1 focus:ring-gray-900 outline-none" 
-                    />
-                    <button onClick={handleAddItem} className="px-3 py-2 bg-gray-900 text-white hover:bg-gray-700 text-xs font-bold rounded-lg transition-colors whitespace-nowrap">
-                      Add
-                    </button>
                   </div>
 
                   <div className="flex justify-between items-end border-t border-gray-100 pt-4">
