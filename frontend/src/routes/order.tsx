@@ -103,7 +103,8 @@ function OrderPage() {
   const canAddAddress = canFillAddress && isAllAddressesValid;
 
   // Items State
-  const [orderItems, setOrderItems] = useState<{id: string, sku: string, qty: number}[]>([])
+  const createEmptyItem = () => ({ id: Math.random().toString(36).substring(7), sku: '', qty: 1 })
+  const [orderItems, setOrderItems] = useState<{id: string, sku: string, qty: number}[]>([createEmptyItem()])
   
   const loadData = () => {
     setOrders(getOrders())
@@ -116,7 +117,7 @@ function OrderPage() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAddRow = () => {
-    setOrderItems(prev => [...prev, { id: Math.random().toString(36).substring(7), sku: '', qty: 1 }])
+    setOrderItems(prev => [...prev, createEmptyItem()])
   }
 
   const handleRemoveRow = (idToRemove: string) => {
@@ -215,7 +216,7 @@ function OrderPage() {
     if (result.success) {
       showToast('บันทึกคำสั่งซื้อเรียบร้อย และตัดสต๊อกสำเร็จ!', 'success')
       // reset form
-      setOrderItems([])
+      setOrderItems([createEmptyItem()])
       setCustomerName('')
       setCustomerPhone('')
       setAddresses([{ id: 1, houseNumber: '', street: '', subDistrict: '', district: '', province: '', zipcode: '' }])
