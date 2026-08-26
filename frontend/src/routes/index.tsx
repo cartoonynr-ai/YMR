@@ -21,7 +21,13 @@ function Login() {
     setTimeout(() => {
       setIsLoading(false)
       localStorage.setItem('token', 'dummy-token-for-ymr')
-      navigate({ to: '/dashboard' })
+      localStorage.setItem('userRole', role)
+      
+      if (role === 'admin') {
+        navigate({ to: '/dashboard' })
+      } else {
+        navigate({ to: '/pos' })
+      }
     }, 1000)
   }
 
