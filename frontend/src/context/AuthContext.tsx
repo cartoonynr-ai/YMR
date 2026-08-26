@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
-      } catch (e) {
+      } catch (_) {
         return null;
       }
     }

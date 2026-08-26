@@ -4,6 +4,7 @@ import { Eye, EyeOff, ShieldCheck, Store, AlertCircle } from 'lucide-react'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useAuth } from '../context/AuthContext'
 
 const loginSchema = z.object({
   role: z.enum(['ADMIN', 'STAFF']),
@@ -42,6 +43,8 @@ function Login() {
     },
   })
 
+  const { login } = useAuth()
+
   const onSubmit = async (data: LoginFormInputs) => {
     setApiError(null)
     
@@ -49,7 +52,8 @@ function Login() {
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // ฟังก์ชันจัดการการจำ Session และอีเมล
-    const handleSuccessLogin = (token: string, path: string) => {
+    const handleSuccessLogin = (token: string, path: string, role: 'admin' | 'pos') => {
+      login(role)
       if (data.remember_me) {
         localStorage.setItem('token', token)
         localStorage.setItem('rememberedEmail', data.email)
@@ -64,9 +68,9 @@ function Login() {
 
     // จำลองเช็คข้อมูลในระบบ (Mock Logic)
     if (data.email === 'admin@ymr.com' && data.password === 'admin123' && data.role === 'ADMIN') {
-      handleSuccessLogin('mock-jwt-token-admin', '/dashboard')
+      handleSuccessLogin('mock-jwt-token-admin', '/dashboard', 'admin')
     } else if (data.email === 'staff@ymr.com' && data.password === 'staff123' && data.role === 'STAFF') {
-      handleSuccessLogin('mock-jwt-token-staff', '/order')
+      handleSuccessLogin('mock-jwt-token-staff', '/pos', 'pos')
     } else {
       // Security Rules: Generic Error Messages ไม่บอกรายละเอียดมากไป
       setApiError('อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือคุณอาจเลือกประเภทผู้ใช้งานผิด')
