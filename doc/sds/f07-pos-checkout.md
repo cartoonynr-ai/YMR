@@ -37,9 +37,9 @@
 │ • Inventory│ [___________________________]   │ ─────────────    │
 │ • Orders   │ [MTL-7100-1L][PIR-DR4-180]...  │ TOTAL DUE     ฿0  │
 │            │                                │                   │
-│ • POS*     │ Item | Unit | Qty | Amount     │ [ CASH ] [TRANSFER]│
-│ • Sales    │ ----------------------------   │                   │
-│   History  │   Scan a barcode to start sale │ [Save sale & deduct│
+│            │ Item | Unit | Qty | Amount     │ [ CASH ] [TRANSFER]│
+│            │ ----------------------------   │                   │
+│            │   Scan a barcode to start sale │ [Save sale & deduct│
 │            │                                │      stock]        │
 └────────────┴──────────────────────────────┴──────────────────┘
 ```
