@@ -367,7 +367,7 @@ function OrderPage() {
                         placeholder="Recipient name" 
                         value={customerName}
                         onChange={e => setCustomerName(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent px-4 py-3 outline-none transition-all placeholder:text-gray-400 font-medium"
+                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-gray-900 px-4 py-3 outline-none transition-all font-medium"
                       />
                       <input 
                         type="tel" 
@@ -403,7 +403,7 @@ function OrderPage() {
                             }
                           }
                         }}
-                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-transparent px-4 py-3 outline-none transition-all placeholder:text-gray-400 font-medium"
+                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-gray-900 px-4 py-3 outline-none transition-all font-medium"
                       />
                     </div>
                   </section>
@@ -449,15 +449,15 @@ function OrderPage() {
                           <div className="grid grid-cols-3 gap-3 mt-3">
                             <div className="flex flex-col gap-1 col-span-1">
                               <label className="text-[10px] font-bold text-gray-500">House number</label>
-                              <input type="text" placeholder="House number" value={addr.houseNumber} onChange={e => updateAddress(addr.id, 'houseNumber', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:bg-gray-100 disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
+                              <input type="text" placeholder="House number" value={addr.houseNumber} onChange={e => updateAddress(addr.id, 'houseNumber', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
                             </div>
                             <div className="flex flex-col gap-1 col-span-1">
                               <label className="text-[10px] font-bold text-gray-500">Street</label>
-                              <input type="text" placeholder="Street" value={addr.street} onChange={e => updateAddress(addr.id, 'street', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:bg-gray-100 disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
+                              <input type="text" placeholder="Street" value={addr.street} onChange={e => updateAddress(addr.id, 'street', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
                             </div>
                             <div className="relative flex flex-col gap-1 col-span-1">
                               <label className="text-[10px] font-bold text-gray-500">Postal Code</label>
-                              <input type="text" placeholder="Postal Code" maxLength={5} value={addr.zipcode} onChange={e => handleZipcodeChange(addr.id, e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:bg-gray-100 disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
+                              <input type="text" placeholder="Postal Code" maxLength={5} value={addr.zipcode} onChange={e => handleZipcodeChange(addr.id, e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
                               
                               {addressSuggestions[addr.id]?.length > 0 && (
                                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
@@ -472,15 +472,15 @@ function OrderPage() {
                             </div>
                             <div className="flex flex-col gap-1 col-span-1">
                               <label className="text-[10px] font-bold text-gray-500">Subdistrict</label>
-                              <input type="text" placeholder="Subdistrict" value={addr.subDistrict} onChange={e => updateAddress(addr.id, 'subDistrict', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:bg-gray-100 disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
+                              <input type="text" placeholder="Subdistrict" value={addr.subDistrict} onChange={e => updateAddress(addr.id, 'subDistrict', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
                             </div>
                             <div className="flex flex-col gap-1 col-span-1">
                               <label className="text-[10px] font-bold text-gray-500">District</label>
-                              <input type="text" placeholder="District" value={addr.district} onChange={e => updateAddress(addr.id, 'district', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:bg-gray-100 disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
+                              <input type="text" placeholder="District" value={addr.district} onChange={e => updateAddress(addr.id, 'district', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
                             </div>
                             <div className="flex flex-col gap-1 col-span-1">
                               <label className="text-[10px] font-bold text-gray-500">Province</label>
-                              <input type="text" placeholder="Province" value={addr.province} onChange={e => updateAddress(addr.id, 'province', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:bg-gray-100 disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
+                              <input type="text" placeholder="Province" value={addr.province} onChange={e => updateAddress(addr.id, 'province', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
                             </div>
                           </div>
                         </div>
@@ -529,7 +529,7 @@ function OrderPage() {
                             min="1" 
                             className="w-14 bg-white border border-gray-200 rounded-lg px-2 py-2 text-xs font-medium text-center focus:ring-1 focus:ring-gray-900 outline-none" 
                           />
-                          <button type="button" onClick={() => handleRemoveRow(item.id)} className="text-gray-400 hover:text-rose-500 p-1 flex-shrink-0">
+                          <button type="button" onClick={() => handleRemoveRow(item.id)} className="text-gray-400 hover:text-rose-500 p-1 shrink-0">
                             <X className="w-4 h-4" />
                           </button>
                         </div>
@@ -568,11 +568,11 @@ function OrderPage() {
                       <div className="relative flex items-center justify-center">
                         <input 
                           type="checkbox" 
-                          className="peer appearance-none w-5 h-5 rounded-md border-2 border-gray-600 bg-gray-800 checked:bg-sky-500 checked:border-sky-500 focus:outline-none transition-colors cursor-pointer" 
+                          className="peer appearance-none w-5 h-5 rounded-md border-2 border-gray-600 bg-gray-800 focus:outline-none transition-colors cursor-pointer" 
                           checked={isPaid}
                           onChange={(e) => setIsPaid(e.target.checked)}
                         />
-                        <div className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none">
+                        <div className="absolute text-white opacity-0 transition-opacity pointer-events-none">
                           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12"></polyline>
                           </svg>
