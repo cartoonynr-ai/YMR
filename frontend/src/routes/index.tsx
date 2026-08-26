@@ -184,8 +184,8 @@ function Login() {
             {errors.password && <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>}
           </div>
 
-          {/* Remember me */}
-          <div className="flex items-center justify-start text-sm mt-4">
+          {/* Remember me & Forgot Password */}
+          <div className="flex items-center justify-between text-sm mt-4">
             <label className="flex items-center cursor-pointer">
               <input
                 type="checkbox"
@@ -193,7 +193,12 @@ function Login() {
                 className="rounded border-gray-300 text-primary focus:ring-primary w-4 h-4 cursor-pointer"
               />
               <span className="ml-2 text-gray-600">จดจำการเข้าสู่ระบบ</span>
-            </label>
+            </label>      
+            <div className="flex items-center justify-end text-sm">
+              <a href="#" className="text-primary hover:text-primary-dark font-medium">
+                ลืมรหัสผ่าน?
+              </a>
+            </div>
           </div>
 
           {/* Submit Button */}
