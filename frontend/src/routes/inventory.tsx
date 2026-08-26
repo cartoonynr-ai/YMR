@@ -697,7 +697,7 @@ function Inventory() {
                   </label>
                   <input
                     type="text"
-                    required
+                    required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
                     placeholder="Enter Name Product"
                     value={productForm.name || ''}
                     onChange={(e) => setProductForm((f) => ({ ...f, name: e.target.value }))}
@@ -713,7 +713,7 @@ function Inventory() {
                     </label>
                     <input
                       type="text"
-                      required
+                      required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
                       placeholder="Enter SKU"
                       disabled={!!editingProduct} // SKU shouldn't be edited once created
                       value={productForm.sku || ''}
@@ -793,7 +793,7 @@ function Inventory() {
                     </label>
                     <input
                       type="number"
-                      required
+                      required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
                       min="0"
                       placeholder="Enter Price"
                       value={productForm.price === 0 ? '' : productForm.price}
@@ -811,7 +811,7 @@ function Inventory() {
                     </label>
                     <input
                       type="number"
-                      required
+                      required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
                       min="0"
                       placeholder="Enter Stock QTY"
                       value={productForm.qty === 0 ? '' : productForm.qty}
@@ -827,7 +827,7 @@ function Inventory() {
                     </label>
                     <input
                       type="number"
-                      required
+                      required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
                       min="0"
                       placeholder="Enter Threshold"
                       value={productForm.threshold === 0 ? '' : productForm.threshold}
@@ -883,7 +883,7 @@ function Inventory() {
                   </label>
                   <input
                     type="text"
-                    required
+                    required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
                     disabled={!!editingCategory} // Cannot change ID/English name as it relates products
                     placeholder="Engine Oil, Spark Plugs"
                     value={categoryForm.name || ''}
@@ -899,7 +899,7 @@ function Inventory() {
                   </label>
                   <input
                     type="text"
-                    required
+                    required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
                     placeholder="น้ำมันเครื่อง, หัวเทียน"
                     value={categoryForm.thaiName || ''}
                     onChange={(e) => setCategoryForm((f) => ({ ...f, thaiName: e.target.value }))}

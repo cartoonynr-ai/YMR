@@ -275,7 +275,7 @@ function OrderPage() {
 
           <div className="grid grid-cols-1 xl:grid-cols-[65%_1fr] gap-6 xl:gap-8 items-start">
             
-            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8 transition-transform duration-500 hover:-translate-y-1">
+            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
               <div className="flex justify-between items-end mb-6">
                 <div>
                   <h2 className="text-xl font-bold text-gray-900 tracking-tight">Order history</h2>
@@ -500,7 +500,6 @@ function OrderPage() {
 
                   <div className="space-y-2 mb-4">
                     {orderItems.map(item => {
-                      const p = products.find(prod => prod.sku === item.sku)
                       return (
                         <div key={item.id} className="flex gap-2 items-center bg-gray-50 p-2 rounded-xl border border-gray-200 shadow-sm">
                           <div className="flex-1 relative">
