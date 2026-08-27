@@ -14,6 +14,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as OrderRouteImport } from './routes/order'
 import { Route as PosRouteImport } from './routes/pos'
+import { Route as Sale_historyRouteImport } from './routes/sale_history'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +41,11 @@ const PosRoute = PosRouteImport.update({
   path: '/pos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Sale_historyRoute = Sale_historyRouteImport.update({
+  id: '/sale_history',
+  path: '/sale_history',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/inventory': typeof InventoryRoute
   '/order': typeof OrderRoute
   '/pos': typeof PosRoute
+  '/sale_history': typeof Sale_historyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/inventory': typeof InventoryRoute
   '/order': typeof OrderRoute
   '/pos': typeof PosRoute
+  '/sale_history': typeof Sale_historyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +70,22 @@ export interface FileRoutesById {
   '/inventory': typeof InventoryRoute
   '/order': typeof OrderRoute
   '/pos': typeof PosRoute
+  '/sale_history': typeof Sale_historyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/inventory' | '/order' | '/pos'
+  fullPaths:
+    '/' | '/dashboard' | '/inventory' | '/order' | '/pos' | '/sale_history'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/inventory' | '/order' | '/pos'
-  id: '__root__' | '/' | '/dashboard' | '/inventory' | '/order' | '/pos'
+  to: '/' | '/dashboard' | '/inventory' | '/order' | '/pos' | '/sale_history'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/inventory'
+    | '/order'
+    | '/pos'
+    | '/sale_history'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +94,7 @@ export interface RootRouteChildren {
   InventoryRoute: typeof InventoryRoute
   OrderRoute: typeof OrderRoute
   PosRoute: typeof PosRoute
+  Sale_historyRoute: typeof Sale_historyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,6 +134,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sale_history': {
+      id: '/sale_history'
+      path: '/sale_history'
+      fullPath: '/sale_history'
+      preLoaderRoute: typeof Sale_historyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -125,6 +150,7 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryRoute: InventoryRoute,
   OrderRoute: OrderRoute,
   PosRoute: PosRoute,
+  Sale_historyRoute: Sale_historyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

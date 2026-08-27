@@ -1,14 +1,14 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { Plus, Minus, LogOut } from 'lucide-react'
+import { Plus, Minus } from 'lucide-react'
+
+import Sidebar from '../components/layout/Sidebar'
 
 export const Route = createFileRoute('/pos')({
   component: POS,
 })
 
 function POS() {
-  const navigate = useNavigate()
-  
   const [items, setItems] = useState<{ id: string; name: string; price: number; qty: number }[]>([])
   const [recentProducts, setRecentProducts] = useState([
     { id: 'MTL-7100-1L', name: 'Motul 7100 4T 10W-40', price: 520 },
@@ -25,12 +25,6 @@ function POS() {
       setItems([...items, { ...product, qty: 1 }])
     }
     setRecentProducts(recentProducts.filter(p => p.id !== product.id))
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('userRole')
-    navigate({ to: '/' })
   }
 
   const updateQty = (id: string, delta: number) => {
@@ -53,51 +47,7 @@ function POS() {
   return (
     <div className="flex h-screen bg-[#f8f9fa] text-gray-900 font-sans">
       
-      {/* LEFT SIDEBAR */}
-      <aside className="w-64 shrink-0 bg-primary text-white flex flex-col sticky top-0 h-screen p-4">
-        {/* Logo */}
-        <div className="flex items-center gap-3 mb-10 px-1">
-          <img
-            src="/logo.png"
-            alt="YMR Logo"
-            className="w-10 h-10 rounded object-contain p-0.5"
-          />
-          <div>
-            <div className="font-bold text-xl leading-tight">YMR</div>
-            <div className="text-[11px] text-blue-200 tracking-wide">YUTH MARY CHONBURI</div>
-          </div>
-        </div>
-
-        {/* Menu */}
-        <nav className="space-y-1.5">
-          <span className="block p-2.5 rounded-lg cursor-pointer transition-colors bg-primary-dark font-medium">
-            POS Terminal
-          </span>
-          <span className="block p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-primary-dark/60">
-            Sale History
-          </span>
-        </nav>
-
-        {/* User info */}
-        <div className="mt-auto pt-4 border-t border-white/15">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center font-semibold">
-              S
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-medium truncate">salesperson</div>
-              <div className="text-xs text-blue-200 truncate">xxxxx@gmail.com</div>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 p-2 text-sm rounded-lg border border-white/25 hover:bg-red-600 hover:border-red-600 transition-colors cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-            ออกจากระบบ
-          </button>
-        </div>
-      </aside>
+      <Sidebar />
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col min-w-0">

@@ -629,7 +629,7 @@ function OrderPage() {
                             type="checkbox" 
                             className="peer appearance-none w-5 h-5 rounded-md border-2 border-gray-600 bg-gray-800 focus:outline-none transition-colors" 
                             checked={isPaid === true}
-                            onChange={(e) => {
+                            onChange={() => {
                               if (payment !== 'CASH ON DELIVERY') {
                                 setIsPaid(true)
                               }
@@ -660,7 +660,7 @@ function OrderPage() {
                             type="checkbox" 
                             className="peer appearance-none w-5 h-5 rounded-md border-2 border-gray-600 bg-gray-800 focus:outline-none transition-colors" 
                             checked={isPaid === false}
-                            onChange={(e) => setIsPaid(false)}
+                            onChange={() => setIsPaid(false)}
                           />
                           <div className={`absolute text-white pointer-events-none transition-opacity ${!isPaid ? 'opacity-100' : 'opacity-0'}`}>
                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
@@ -866,7 +866,7 @@ function OrderPage() {
                 value={cancelReasonStr}
                 onChange={(e) => setCancelReasonStr(e.target.value)}
                 rows={4}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#e70029]/20 focus:border-[#e70029] transition-all resize-none"
+                className="w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#e70029]/20 focus:border-[#e70029] transition-all resize-none"
                 placeholder="เช่น ลูกค้าเปลี่ยนใจ, สินค้าหมด, ฯลฯ"
               />
               <p className="text-xs text-gray-500 mt-2">
