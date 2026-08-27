@@ -7,11 +7,14 @@ import {
   ChevronDown,
   MapPin,
   Package,
-  CreditCard
+  CreditCard,
+  Eye,
+  CheckCircle,
+  Ban
 } from 'lucide-react'
 import { getProducts, type Product } from '../data/mockInventory'
 import { searchAddressByZipcode } from 'thai-address-database'
-import { getOrders, createOrder, type Order } from '../data/mockOrderData'
+import { getOrders, createOrder, cancelOrder, markOrderAsPaid, type Order } from '../data/mockOrderData'
 
 export const Route = createFileRoute('/order')({
   beforeLoad: () => {
@@ -26,6 +29,9 @@ export const Route = createFileRoute('/order')({
 function OrderPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [cancelOrderObj, setCancelOrderObj] = useState<Order | null>(null)
+  const [cancelReasonStr, setCancelReasonStr] = useState('')
   
   // Form State
   const [channel, setChannel] = useState('LINE')
@@ -209,12 +215,13 @@ function OrderPage() {
       address: channel === 'STOREFRONT' ? '-' : fullAddress,
       items,
       total: calculateTotal(),
-      status: isPaid ? 'Paid' : (payment === 'CASH ON DELIVERY' ? 'Awaiting payment' : 'Awaiting payment')
+      status: isPaid ? 'Paid' : 'Awaiting payment',
+      paymentMethod: payment
     }
 
     const result = createOrder(newOrderData)
     if (result.success) {
-      showToast('บันทึกคำสั่งซื้อเรียบร้อย และตัดสต๊อกสำเร็จ!', 'success')
+      showToast(`บันทึกคำสั่งซื้อ ${result.orderId} เรียบร้อย และตัดสต๊อกสำเร็จ!`, 'success')
       // reset form
       setOrderItems([createEmptyItem()])
       setCustomerName('')
@@ -227,6 +234,31 @@ function OrderPage() {
     }
   }
 
+  const handleCancelOrder = () => {
+    if (!cancelOrderObj || !cancelReasonStr.trim()) return
+    const result = cancelOrder(cancelOrderObj.id, cancelReasonStr)
+    if (result.success) {
+      showToast('ยกเลิกคำสั่งซื้อและคืนสต็อกสำเร็จ!', 'success')
+      setCancelOrderObj(null)
+      setCancelReasonStr('')
+      loadData()
+    } else {
+      showToast(result.error || 'เกิดข้อผิดพลาด')
+    }
+  }
+
+  const handleMarkAsPaid = (order: Order) => {
+    if (window.confirm(`ยืนยันการชำระเงินสำหรับออเดอร์ ${order.id} ใช่หรือไม่?`)) {
+      const result = markOrderAsPaid(order.id)
+      if (result.success) {
+        showToast('อัปเดตสถานะเป็นชำระแล้ว!', 'success')
+        loadData()
+      } else {
+        showToast(result.error || 'เกิดข้อผิดพลาด')
+      }
+    }
+  }
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(price)
   }
@@ -235,7 +267,6 @@ function OrderPage() {
     switch(status) {
       case 'Awaiting payment': return 'text-[#da8018] bg-[#fff3d7] rounded-xl'
       case 'Paid': return 'text-[#276ed2] bg-[#e7f3ff] rounded-xl'
-      case 'Completed': return 'text-[#31976a] bg-[#e0faec] rounded-xl'
       case 'Cancelled': return 'text-[#e70029] bg-[#ffeded] rounded-xl'
       default: return 'bg-gray-100 text-gray-800 rounded-xl'
     }
@@ -317,14 +348,38 @@ function OrderPage() {
                           {formatPrice(order.total)}
                         </td>
                         <td className="py-4 px-4 text-center">
-                          <span className={`text-[11px] font-bold px-3 py-1.5 ${getStatusColor(order.status)} whitespace-nowrap`}>
+                          <span className={`text-[11px] font-bold px-3 py-1 ${getStatusColor(order.status)} shadow-sm`}>
                             {order.status}
                           </span>
                         </td>
                         <td className="py-4 px-4 text-center">
-                          <button className="text-sm font-bold text-gray-400 hover:text-gray-900 underline-offset-4 group-hover:underline transition-all">
-                            View
-                          </button>
+                          <div className="flex justify-center gap-1.5">
+                            <button 
+                              onClick={() => setSelectedOrder(order)}
+                              title="View Order"
+                              className="p-1.5 text-[#00b6d5] hover:text-[#0092ab] hover:bg-[#e6f8fb] rounded-lg transition-colors"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            {order.status === 'Awaiting payment' && (
+                              <button 
+                                onClick={() => handleMarkAsPaid(order)}
+                                title="Mark as Paid"
+                                className="p-1.5 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </button>
+                            )}
+                            {order.status !== 'Cancelled' && (
+                              <button 
+                                onClick={() => setCancelOrderObj(order)}
+                                title="Cancel Order"
+                                className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              >
+                                <Ban className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -556,32 +611,68 @@ function OrderPage() {
                       {['BANK TRANSFER', 'CASH ON DELIVERY'].map(method => (
                         <button
                           key={method}
-                          onClick={() => setPayment(method)}
-                          className={`flex-1 text-[10px] font-bold py-2.5 rounded-lg transition-all ${payment === method ? 'text-[#00b6d5] bg-[#e6f8fb] border border-[#66d4e6] shadow-md' : 'text-gray-400 hover:text-white border border-transparent'}`}
+                          onClick={() => {
+                            setPayment(method)
+                            if (method === 'CASH ON DELIVERY') setIsPaid(false)
+                          }}
+                          className={`flex-1 text-[11px] font-bold py-2.5 rounded-lg transition-all ${payment === method ? 'text-[#00b6d5] bg-[#e6f8fb] border border-[#66d4e6] shadow-md' : 'text-gray-400 hover:text-white border border-transparent'}`}
                         >
                           {method}
                         </button>
                       ))}
                     </div>
 
-                    <label className="flex items-center gap-3 cursor-pointer mb-6 group/check">
-                      <div className="relative flex items-center justify-center">
-                        <input 
-                          type="checkbox" 
-                          className="peer appearance-none w-5 h-5 rounded-md border-2 border-gray-600 bg-gray-800 focus:outline-none transition-colors cursor-pointer" 
-                          checked={isPaid}
-                          onChange={(e) => setIsPaid(e.target.checked)}
-                        />
-                        <div className="absolute text-white opacity-0 transition-opacity pointer-events-none">
-                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
+                    <div className="flex flex-col gap-3 mb-6">
+                      <label className={`flex items-center gap-3 group/check ${payment === 'CASH ON DELIVERY' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                        <div className="relative flex items-center justify-center">
+                          <input 
+                            type="checkbox" 
+                            className="peer appearance-none w-5 h-5 rounded-md border-2 border-gray-600 bg-gray-800 focus:outline-none transition-colors" 
+                            checked={isPaid === true}
+                            onChange={(e) => {
+                              if (payment !== 'CASH ON DELIVERY') {
+                                setIsPaid(true)
+                              }
+                            }}
+                            disabled={payment === 'CASH ON DELIVERY'}
+                          />
+                          <div className={`absolute text-white pointer-events-none transition-opacity ${isPaid ? 'opacity-100' : 'opacity-0'}`}>
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                          </div>
                         </div>
-                      </div>
-                      <span className="text-[11px] font-medium text-gray-300 group-hover/check:text-white transition-colors">
-                        Mark as already paid
-                      </span>
-                    </label>
+                        <div className="flex flex-col">
+                          <span className={`text-[11px] font-medium transition-colors ${payment === 'CASH ON DELIVERY' ? 'text-gray-400' : 'text-gray-300 group-hover/check:text-white'}`}>
+                            Paid (ชำระแล้ว)
+                          </span>
+                          {payment === 'CASH ON DELIVERY' && (
+                            <span className="text-[9px] text-red-400 mt-0.5">
+                              * Not applicable for COD
+                            </span>
+                          )}
+                        </div>
+                      </label>
+
+                      <label className="flex items-center gap-3 cursor-pointer group/check">
+                        <div className="relative flex items-center justify-center">
+                          <input 
+                            type="checkbox" 
+                            className="peer appearance-none w-5 h-5 rounded-md border-2 border-gray-600 bg-gray-800 focus:outline-none transition-colors" 
+                            checked={isPaid === false}
+                            onChange={(e) => setIsPaid(false)}
+                          />
+                          <div className={`absolute text-white pointer-events-none transition-opacity ${!isPaid ? 'opacity-100' : 'opacity-0'}`}>
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-medium text-gray-300 group-hover/check:text-white transition-colors">
+                          Awaiting payment (รอการชำระเงิน)
+                        </span>
+                      </label>
+                    </div>
 
                     <button onClick={handleSaveOrder} className="w-full text-white bg-[#07090c] hover:bg-gray-800 font-black text-sm py-4 rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2">
                       Save order & deduct stock
@@ -597,6 +688,211 @@ function OrderPage() {
 
 
       </div>
+      
+      {/* Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-gray-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="flex items-start justify-between px-8 py-6 bg-white border-b border-gray-100">
+              <div>
+                <div className="flex items-center gap-3 mb-1">
+                  <h3 className="font-black text-gray-900 text-2xl tracking-tight">Order {selectedOrder.id}</h3>
+                  <span className={`text-[11px] font-bold px-3 py-1 ${getStatusColor(selectedOrder.status)} shadow-sm`}>
+                    {selectedOrder.status}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1.5 mt-3">
+                  <p className="text-sm text-gray-500 font-medium flex items-center gap-2">
+                    <span className="w-28 text-gray-400 text-xs font-bold tracking-wider">ORDER CREATED:</span>
+                    {selectedOrder.date}
+                  </p>
+                  
+                  {selectedOrder.status === 'Awaiting payment' && (
+                    <p className="text-sm text-[#da8018] font-medium flex items-center gap-2">
+                      <span className="w-28 text-[#da8018]/60 text-xs font-bold tracking-wider">WAITING SINCE:</span>
+                      {selectedOrder.date}
+                    </p>
+                  )}
+
+                  {selectedOrder.status === 'Paid' && selectedOrder.paidDate && (
+                    <p className="text-sm text-emerald-600 font-medium flex items-center gap-2">
+                      <span className="w-28 text-emerald-500/70 text-xs font-bold tracking-wider">PAID AT:</span>
+                      {selectedOrder.paidDate}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer text-gray-400 hover:text-gray-900"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Content Body */}
+            <div className="p-8 overflow-y-auto space-y-8 bg-gray-50/50">
+              
+              {selectedOrder.status === 'Cancelled' && selectedOrder.cancelReason && (
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-baseline gap-3">
+                  <div className="text-red-600 font-bold text-sm whitespace-nowrap">เหตุผลการยกเลิก:</div>
+                  <div className="text-red-700 text-sm font-medium leading-relaxed">{selectedOrder.cancelReason}</div>
+                </div>
+              )}
+
+              {/* Info Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <Type className="w-3.5 h-3.5" /> Customer Info
+                  </h4>
+                  <p className="font-bold text-gray-900 text-lg mb-0.5">{selectedOrder.customerName}</p>
+                  <p className="text-sm text-gray-500 mb-3">{selectedOrder.customerPhone}</p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <div className="inline-flex items-center gap-2 text-xs font-semibold bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
+                      <span className="text-gray-400">CHANNEL:</span>
+                      <span className={`px-2 py-0.5 rounded-md ${getChannelColor(selectedOrder.channel)}`}>
+                        {selectedOrder.channel}
+                      </span>
+                    </div>
+                    {selectedOrder.paymentMethod && (
+                      <div className="inline-flex items-center gap-2 text-xs font-semibold bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
+                        <span className="text-gray-400">PAYMENT:</span>
+                        <span className="text-gray-700">{selectedOrder.paymentMethod}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" /> Shipping Address
+                  </h4>
+                  {selectedOrder.address !== '-' ? (
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium">
+                      {(() => {
+                        try {
+                          const addr = JSON.parse(selectedOrder.address);
+                          return `${addr.houseNumber} ${addr.street}\nต.${addr.subDistrict} อ.${addr.district}\nจ.${addr.province} ${addr.zipcode}`;
+                        } catch (e) {
+                          return selectedOrder.address;
+                        }
+                      })()}
+                    </p>
+                  ) : (
+                    <div className="h-full flex items-center text-sm text-gray-400 italic">
+                      No shipping address required
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden">
+                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                  <h4 className="text-[11px] font-black text-gray-900 uppercase tracking-widest flex items-center gap-1.5">
+                    <Package className="w-4 h-4 text-gray-400" />
+                    Order Items
+                  </h4>
+                  <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">
+                    {selectedOrder.items.length} items
+                  </span>
+                </div>
+                
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50/80 border-b border-gray-100">
+                    <tr>
+                      <th className="py-3.5 px-6 font-bold text-gray-400 text-xs uppercase tracking-wider">Product</th>
+                      <th className="py-3.5 px-6 font-bold text-gray-400 text-xs uppercase tracking-wider text-center">Quantity</th>
+                      <th className="py-3.5 px-6 font-bold text-gray-400 text-xs uppercase tracking-wider text-right">Price</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {selectedOrder.items.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
+                        <td className="py-4 px-6">
+                          <div className="font-bold text-gray-900 mb-0.5">{item.name}</div>
+                          <div className="text-xs text-gray-400 font-medium">SKU: {item.sku}</div>
+                        </td>
+                        <td className="py-4 px-6 text-center font-bold text-gray-700 bg-gray-50/30">{item.qty}</td>
+                        <td className="py-4 px-6 text-right font-bold text-gray-900">
+                          {formatPrice(item.price * item.qty)}
+                          <div className="text-[10px] text-gray-400 mt-0.5 font-normal">
+                            ({formatPrice(item.price)} / ea)
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                
+                {/* Total Footer */}
+                <div className="bg-gray-900 p-6 flex justify-between items-center text-white">
+                  <div className="flex flex-col justify-center">
+                    <span className="text-gray-400 text-[10px] uppercase font-black tracking-widest">Total Amount</span>
+                    <span className="text-white text-sm font-bold mt-0.5">Net Total</span>
+                  </div>
+                  <span className="text-3xl font-black tracking-tight">{formatPrice(selectedOrder.total)}</span>
+                </div>
+              </div>
+              
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Cancel Order Modal */}
+      {cancelOrderObj && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="bg-[#e70029] p-5 flex justify-between items-center text-white">
+              <h3 className="font-bold text-lg">ยกเลิกคำสั่งซื้อ {cancelOrderObj.id}</h3>
+              <button 
+                onClick={() => setCancelOrderObj(null)}
+                className="text-white/80 hover:text-white bg-black/10 hover:bg-black/20 rounded-full p-1.5 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Body */}
+            <div className="p-6">
+              <label className="block text-sm font-bold text-gray-900 mb-2">
+                เหตุผลการยกเลิก (โปรดระบุ)
+              </label>
+              <textarea
+                value={cancelReasonStr}
+                onChange={(e) => setCancelReasonStr(e.target.value)}
+                rows={4}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#e70029]/20 focus:border-[#e70029] transition-all resize-none"
+                placeholder="เช่น ลูกค้าเปลี่ยนใจ, สินค้าหมด, ฯลฯ"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                * การยกเลิกคำสั่งซื้อจะคืนจำนวนสินค้า ({cancelOrderObj.items.reduce((acc, i) => acc + i.qty, 0)} ชิ้น) กลับสู่คลังอัตโนมัติ
+              </p>
+            </div>
+            
+            {/* Footer */}
+            <div className="p-5 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50">
+              <button 
+                onClick={() => setCancelOrderObj(null)}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-200 transition-colors"
+              >
+                ย้อนกลับ
+              </button>
+              <button 
+                onClick={handleCancelOrder}
+                disabled={!cancelReasonStr.trim()}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-[#e70029] hover:bg-[#c90022] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-[#e70029]/20"
+              >
+                ยืนยันการยกเลิก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   )
 }

@@ -48,9 +48,7 @@ function POS() {
     }
   }
 
-  const subtotal = items.reduce((acc, item) => acc + (item.price * item.qty), 0)
-  const vat = subtotal * 0.07
-  const total = subtotal + vat
+  const total = items.reduce((acc, item) => acc + (item.price * item.qty), 0)
 
   return (
     <div className="flex h-screen bg-[#f8f9fa] text-gray-900 font-sans">
@@ -198,12 +196,8 @@ function POS() {
             {/* Calculations */}
             <div className="p-6 space-y-4 flex-1 text-[#6d7b8f]">
               <div className="flex justify-between items-center">
-                <span>Subtotal</span>
-                <span className="font-mono text-lg">฿{subtotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>VAT 7%</span>
-                <span className="font-mono text-lg">฿{vat.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+                <span>Total Amount</span>
+                <span className="font-mono text-lg">฿{total.toLocaleString()}</span>
               </div>
             </div>
 
@@ -236,7 +230,7 @@ function POS() {
                       : 'bg-[#eeeeee25] text-[#6d7b8f] hover:bg-[#c9c9c938]'
                   }`}
                 >
-                  transfer
+                  BANK TRANSFER
                 </button>
               </div>
               <button className="w-full py-4 bg-[#00b6d5] hover:bg-[#0494ad] text-[#0f172b] font-medium rounded-md shadow-sm transition-colors">
