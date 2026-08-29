@@ -228,18 +228,22 @@ function PosPage() {
       <Sidebar />
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col relative min-w-0">
+        <div className="absolute top-0 left-0 w-full h-96 bg-linear-to-b from-white to-transparent opacity-50 pointer-events-none"></div>
         
-        {/* TOP BAR */}
-        <header className="h-20 px-8 flex items-center border-b border-gray-200 bg-white shrink-0">
-          <h2 className="text-xl font-medium text-gray-800">POS Terminal</h2>
-        </header>
-
-        {/* CONTENT LAYOUT */}
-        <div className="flex-1 p-6 flex gap-6 overflow-hidden">
+        <div className="flex-1 flex flex-col relative z-10 p-6 md:p-8 overflow-hidden max-w-[1600px] w-full mx-auto">
           
-          {/* LEFT PANEL (Search & Table) */}
-          <div className="flex-2 flex flex-col bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 min-w-0 overflow-hidden">
+          <header className="flex justify-between items-center mb-8 shrink-0">
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-900">POS Terminal</h1>
+            </div>
+          </header>
+
+          {/* CONTENT LAYOUT */}
+          <div className="flex-1 flex gap-6 overflow-hidden">
+            
+            {/* LEFT PANEL (Search & Table) */}
+          <div className="flex-2 flex flex-col bg-white rounded-xl shadow-sm border border-gray-100 min-w-0 overflow-hidden">
             {/* Search Area */}
             <div className="p-6 md:p-8 border-b border-gray-100">
               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">SCANBAR CODE / SEARCH PRODUCT</label>
@@ -375,8 +379,7 @@ function PosPage() {
           </div>
 
           {/* RIGHT PANEL (Terminal / Checkout) */}
-          <div className="w-95 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 relative overflow-hidden flex flex-col shrink-0 p-6 md:p-8">
-            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-gray-900 to-gray-400"></div>
+          <div className="w-95 bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden flex flex-col shrink-0 p-6 md:p-8">
             
             {/* Terminal Header */}
             <div className="flex justify-between items-center text-gray-400 border-b border-gray-100 pb-4 mb-6">
@@ -439,11 +442,24 @@ function PosPage() {
                           <input 
                             type="number"
                             value={cashReceived}
-                            onChange={(e) => setCashReceived(e.target.value)}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === '' || Number(val) >= 0) setCashReceived(val);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === '-' || e.key === 'e') e.preventDefault();
+                            }}
+                            disabled={items.length === 0}
+                            min="0"
                             placeholder="0"
-                            className="w-full bg-gray-900 border border-gray-700 text-white text-lg rounded-xl focus:ring-2 focus:ring-[#00b6d5] focus:border-transparent block pl-8 pr-4 py-3 font-mono placeholder:text-gray-600 outline-none transition-all"
+                            className="w-full bg-gray-900 border border-gray-700 text-white text-lg rounded-xl focus:ring-2 focus:ring-[#00b6d5] focus:border-transparent block pl-8 pr-4 py-3 font-mono placeholder:text-gray-600 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           />
                         </div>
+                        {total > 0 && Number(cashReceived) < total && cashReceived !== '' && (
+                          <span className="text-[11px] font-bold text-rose-500 mt-1">
+                            ⚠️ ยอดเงินไม่พอ (ขาด ฿{(total - Number(cashReceived)).toLocaleString()})
+                          </span>
+                        )}
                       </div>
                       
                       {Number(cashReceived) >= total && total > 0 && (
@@ -470,7 +486,7 @@ function PosPage() {
                   
                   <button 
                     onClick={handleSaveSale}
-                    disabled={items.length === 0}
+                    disabled={items.length === 0 || (paymentMethod === 'cash' && (cashReceived === '' || Number(cashReceived) < total))}
                     className="w-full bg-white hover:bg-gray-100 text-[#101828] font-black py-4 px-6 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_14px_0_rgb(255,255,255,0.15)] flex justify-center items-center"
                   >
                     <span>Save sale & deduct stock</span>
@@ -488,7 +504,7 @@ function PosPage() {
             </div>
           </div>
         </div>
-
+        </div>
       </main>
     </div>
   )

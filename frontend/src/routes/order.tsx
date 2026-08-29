@@ -295,21 +295,21 @@ function OrderPage() {
       <div className="min-h-screen bg-[#F3F4F6] text-gray-900 pb-24 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-96 bg-linear-to-b from-white to-transparent opacity-50 pointer-events-none"></div>
         
-        <div className="max-w-[1600px] mx-auto p-4 md:p-8 relative z-10">
+        <div className="max-w-[1600px] mx-auto px-4 md:px-8 relative z-10">
           
           <header className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-black tracking-tight text-gray-900 uppercase">Order Records</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Order Records</h1>
               <span className="px-3 py-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]">LIVE</span>
             </div>
           </header>
 
           <div className="grid grid-cols-1 xl:grid-cols-[65%_1fr] gap-6 xl:gap-8 items-start">
             
-            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
               <div className="flex justify-between items-end mb-6">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 tracking-tight">Order history</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Order history</h2>
                 </div>
                 <div className="text-sm font-bold text-gray-400 bg-gray-50 px-4 py-2 rounded-full">
                   {orders.length} records
@@ -388,10 +388,9 @@ function OrderPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-gray-900 to-gray-400"></div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8 relative overflow-hidden">
               
-              <h2 className="text-xl font-bold text-gray-900 mb-6 tracking-tight">Record new order</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 tracking-tight">Record new order</h2>
               
               <div className="space-y-8">
                 
@@ -848,7 +847,7 @@ function OrderPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
             {/* Header */}
             <div className="bg-[#e70029] p-5 flex justify-between items-center text-white">
-              <h3 className="font-bold text-lg">ยกเลิกคำสั่งซื้อ {cancelOrderObj.id}</h3>
+              <h3 className="text-2xl font-bold">ยกเลิกคำสั่งซื้อ {cancelOrderObj.id}</h3>
               <button 
                 onClick={() => setCancelOrderObj(null)}
                 className="text-white/80 hover:text-white bg-black/10 hover:bg-black/20 rounded-full p-1.5 transition-colors"

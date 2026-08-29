@@ -52,7 +52,7 @@ function SaleHistoryPage() {
           
           <header className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-black tracking-tight text-gray-900 uppercase">Storefront Sales History</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Storefront Sales History</h1>
             </div>
           </header>
 
@@ -61,7 +61,7 @@ function SaleHistoryPage() {
             {summaryData.map((item, index) => (
               <div 
                 key={index} 
-                className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-6"
+                className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"
               >
                 <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{item.title}</span>
                 <div className="text-3xl font-black tracking-tight text-gray-900 mb-1">{item.value}</div>
@@ -71,7 +71,7 @@ function SaleHistoryPage() {
           </div>
 
           {/* Data Table */}
-          <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
             <div className="flex justify-between items-end mb-6">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 tracking-tight">POS receipts</h2>
