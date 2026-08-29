@@ -299,7 +299,7 @@ function OrderPage() {
           
           <header className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">Order Records</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Order</h1>
             </div>
           </header>
 
