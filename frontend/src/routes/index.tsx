@@ -5,6 +5,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 
 const loginSchema = z.object({
   role: z.enum(['ADMIN', 'STAFF']),
@@ -23,6 +24,7 @@ function Login() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
+  
   // โหลดค่าที่เคยจดจำไว้จาก localStorage (ถ้ามี)
   const rememberedEmail = localStorage.getItem('rememberedEmail') || ''
   const rememberedRole = (localStorage.getItem('rememberedRole') as 'ADMIN' | 'STAFF') || 'ADMIN'
@@ -47,33 +49,56 @@ function Login() {
 
   const onSubmit = async (data: LoginFormInputs) => {
     setApiError(null)
-    
-    // จำลองการเรียก API Login โดยใช้เวลา 1 วินาที
-    await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    // ฟังก์ชันจัดการการจำ Session และอีเมล
-    const handleSuccessLogin = (token: string, path: string, role: 'admin' | 'pos') => {
-      login(role)
-      if (data.remember_me) {
-        localStorage.setItem('token', token)
-        localStorage.setItem('rememberedEmail', data.email)
-        localStorage.setItem('rememberedRole', data.role)
-      } else {
-        sessionStorage.setItem('token', token)
-        localStorage.removeItem('rememberedEmail')
-        localStorage.removeItem('rememberedRole')
+    try {
+      // 1. เรียก API Auth ของ Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      })
+
+      if (authError) throw authError
+
+      // 2. ดึงข้อมูล Role จากตาราง users
+      if (authData.user) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', authData.user.id)
+          .single()
+
+        if (userError) throw userError
+
+        // ตรวจสอบว่า Role ที่เลือกตรงกับในระบบหรือไม่
+        const dbRole = userData.role === 'admin' ? 'ADMIN' : 'STAFF'
+        if (dbRole !== data.role) {
+          throw new Error('ประเภทผู้ใช้งานไม่ถูกต้องกับบัญชีนี้')
+        }
+
+        // ฟังก์ชันจัดการการจำ Session และอีเมล
+        const handleSuccessLogin = (token: string, path: string, role: 'admin' | 'pos') => {
+          login(role)
+          if (data.remember_me) {
+            localStorage.setItem('token', token) // หมายเหตุ: Supabase จัดการ Session ให้แล้ว แต่นี่ยังคง logic เดิมไว้
+            localStorage.setItem('rememberedEmail', data.email)
+            localStorage.setItem('rememberedRole', data.role)
+          } else {
+            sessionStorage.setItem('token', token)
+            localStorage.removeItem('rememberedEmail')
+            localStorage.removeItem('rememberedRole')
+          }
+          navigate({ to: path })
+        }
+
+        // Login สำเร็จ
+        if (dbRole === 'ADMIN') {
+          handleSuccessLogin(authData.session?.access_token || '', '/dashboard', 'admin')
+        } else {
+          handleSuccessLogin(authData.session?.access_token || '', '/pos', 'pos')
+        }
       }
-      navigate({ to: path })
-    }
-
-    // จำลองเช็คข้อมูลในระบบ (Mock Logic)
-    if (data.email === 'admin@ymr.com' && data.password === 'admin123' && data.role === 'ADMIN') {
-      handleSuccessLogin('mock-jwt-token-admin', '/dashboard', 'admin')
-    } else if (data.email === 'staff@ymr.com' && data.password === 'staff123' && data.role === 'STAFF') {
-      handleSuccessLogin('mock-jwt-token-staff', '/pos', 'pos')
-    } else {
-      // Security Rules: Generic Error Messages ไม่บอกรายละเอียดมากไป
-      setApiError('อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือคุณอาจเลือกประเภทผู้ใช้งานผิด')
+    } catch (err: any) {
+      setApiError(err.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือคุณอาจเลือกประเภทผู้ใช้งานผิด')
     }
   }
 

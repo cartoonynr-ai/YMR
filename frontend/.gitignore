@@ -26,5 +26,7 @@ dist-ssr
 *.sln
 *.sw?
 
+.env
+
 # Auto-generated TanStack Router tree
 /src/routeTree.gen.ts
