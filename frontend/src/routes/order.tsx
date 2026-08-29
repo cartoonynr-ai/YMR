@@ -18,7 +18,7 @@ import { getOrders, createOrder, cancelOrder, markOrderAsPaid, type Order } from
 
 export const Route = createFileRoute('/order')({
   beforeLoad: () => {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
     if (!token) {
       throw redirect({ to: '/' })
     }

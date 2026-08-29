@@ -8,7 +8,7 @@ import StockMovements from '../components/dashboard/StockMovements'
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: () => {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
     if (!token) {
       throw redirect({ to: '/' })
     }

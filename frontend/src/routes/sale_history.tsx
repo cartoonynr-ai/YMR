@@ -1,95 +1,129 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import { useState, useEffect } from 'react'
+import { getOrders, type Order } from '../data/mockOrderData'
 
 import Sidebar from '../components/layout/Sidebar'
 
 export const Route = createFileRoute('/sale_history')({
+  beforeLoad: () => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+    if (!token) {
+      throw redirect({ to: '/' })
+    }
+  },
   component: SaleHistoryPage,
 })
 
-const summaryData = [
-  { title: 'Sales recorded', value: '5', subtitle: 'Last 3 days' },
-  { title: 'Units sold', value: '15', subtitle: 'Across all receipts' },
-  { title: 'Gross total', value: '฿16,500', subtitle: 'Storefront only' },
-  { title: 'Average receipt', value: '฿3,300', subtitle: 'Per sale' },
-]
-
-const historyData = [
-  { receipt: '#POS-4471', timestamp: '2026-08-20 10:55', items: 2, payment: 'Cash', cashier: 'Counter Staff', total: '฿680' },
-  { receipt: '#POS-4470', timestamp: '2026-08-20 10:12', items: 5, payment: 'Bank transfer', cashier: 'Counter Staff', total: '฿2,810' },
-  { receipt: '#POS-4469', timestamp: '2026-08-19 18:40', items: 1, payment: 'Bank transfer', cashier: 'Counter Staff', total: '฿5,900' },
-  { receipt: '#POS-4468', timestamp: '2026-08-18 17:22', items: 3, payment: 'Cash', cashier: 'Counter Staff', total: '฿5,550' },
-  { receipt: '#POS-4467', timestamp: '2026-08-18 15:08', items: 4, payment: 'Cash', cashier: 'Counter Staff', total: '฿1,560' },
-]
-
 function SaleHistoryPage() {
+  const [historyData, setHistoryData] = useState<Order[]>([])
+  const [summaryData, setSummaryData] = useState([
+    { title: 'Sales recorded', value: '0', subtitle: 'Last 3 days' },
+    { title: 'Units sold', value: '0', subtitle: 'Across all receipts' },
+    { title: 'Gross total', value: '฿0', subtitle: 'Storefront only' },
+    { title: 'Average receipt', value: '฿0', subtitle: 'Per sale' },
+  ])
+
+  useEffect(() => {
+    const allOrders = getOrders()
+    const storefrontOrders = allOrders.filter(o => o.channel === 'STOREFRONT' || o.channel === 'POS' || o.channel === 'Walk-in')
+    setHistoryData(storefrontOrders)
+
+    const totalSales = storefrontOrders.length
+    const unitsSold = storefrontOrders.reduce((sum, order) => sum + order.items.reduce((s, i) => s + i.qty, 0), 0)
+    const grossTotal = storefrontOrders.reduce((sum, order) => sum + order.total, 0)
+    const avgReceipt = totalSales > 0 ? grossTotal / totalSales : 0
+
+    setSummaryData([
+      { title: 'Sales recorded', value: totalSales.toString(), subtitle: 'All time' },
+      { title: 'Units sold', value: unitsSold.toString(), subtitle: 'Across all receipts' },
+      { title: 'Gross total', value: `฿${grossTotal.toLocaleString()}`, subtitle: 'Storefront only' },
+      { title: 'Average receipt', value: `฿${avgReceipt.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, subtitle: 'Per sale' },
+    ])
+  }, [])
   return (
-    <div className="flex h-screen w-full bg-white font-sans text-sm antialiased selection:bg-black selection:text-white">
+    <div className="flex h-screen bg-[#F3F4F6] text-gray-900 font-sans">
       <Sidebar />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-gray-50 p-8">
-        <div className="mx-auto max-w-6xl space-y-8">
+      <main className="flex-1 overflow-auto relative min-w-0">
+        <div className="absolute top-0 left-0 w-full h-96 bg-linear-to-b from-white to-transparent opacity-50 pointer-events-none"></div>
+        
+        <div className="max-w-[1600px] mx-auto p-6 md:p-8 relative z-10 space-y-8">
           
-          <header>
-            <h1 className="text-2xl font-semibold tracking-tight text-black">Storefront Sales History</h1>
+          <header className="flex justify-between items-center mb-8">
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-black tracking-tight text-gray-900 uppercase">Storefront Sales History</h1>
+            </div>
           </header>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {summaryData.map((item, index) => (
               <div 
                 key={index} 
-                className="flex flex-col justify-between border border-gray-200 bg-white p-5 rounded-none shadow-sm transition-all hover:shadow-md"
+                className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-6"
               >
-                <span className="text-xs uppercase tracking-wider text-[#62748e]">{item.title}</span>
-                <div className="my-2 text-3xl font-light text-black">{item.value}</div>
-                <span className="text-xs text-[#62748e]">{item.subtitle}</span>
+                <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{item.title}</span>
+                <div className="text-3xl font-black tracking-tight text-gray-900 mb-1">{item.value}</div>
+                <span className="text-[11px] font-bold text-gray-400">{item.subtitle}</span>
               </div>
             ))}
           </div>
 
           {/* Data Table */}
-          <section className="border border-gray-200 bg-white rounded-none shadow-sm">
-            <div className="border-b border-gray-200 px-5 py-4">
-              <h2 className="text-sm font-semibold text-black">POS receipts / ประวัติการขายหน้าร้าน</h2>
+          <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-6 md:p-8">
+            <div className="flex justify-between items-end mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 tracking-tight">POS receipts</h2>
+              </div>
+              <div className="text-sm font-bold text-gray-400 bg-gray-50 px-4 py-2 rounded-full">
+                {historyData.length} records
+              </div>
             </div>
             
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-[#faf6f7] text-[11px] uppercase tracking-wider text-[#62748e]">
-                  <tr>
-                    <th className="px-5 py-3 font-medium">Receipt</th>
-                    <th className="px-5 py-3 font-medium">Timestamp</th>
-                    <th className="px-5 py-3 font-medium text-right">Items</th>
-                    <th className="px-5 py-3 font-medium">Payment</th>
-                    <th className="px-5 py-3 font-medium">Cashier</th>
-                    <th className="px-5 py-3 font-medium text-right">Total</th>
+              <table className="w-full text-left border-collapse min-w-150">
+                <thead>
+                  <tr className="border-b-2 border-gray-100">
+                    <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider">Receipt</th>
+                    <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider">Timestamp</th>
+                    <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider text-center">Items</th>
+                    <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider text-center">Payment</th>
+                    <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider">Cashier</th>
+                    <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider text-right">Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-50">
                   {historyData.map((row, index) => (
                     <tr 
                       key={index} 
-                      className="transition-colors hover:bg-gray-50"
+                      className="group hover:bg-gray-50/50 transition-colors"
                     >
-                      <td className="px-5 py-4 font-medium text-black">{row.receipt}</td>
-                      <td className="px-5 py-4 text-gray-600">{row.timestamp}</td>
-                      <td className="px-5 py-4 text-right text-gray-600">{row.items}</td>
-                      <td className="px-5 py-4">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-gray-100 text-gray-800">
-                          {row.payment}
+                      <td className="py-4 px-4 font-bold text-gray-900">{row.id}</td>
+                      <td className="py-4 px-4 text-[11px] font-medium text-gray-500">{row.date}</td>
+                      <td className="py-4 px-4 text-center font-bold text-gray-900">{row.items.reduce((sum, item) => sum + item.qty, 0)}</td>
+                      <td className="py-4 px-4 text-center">
+                        <span className={`text-[10px] font-bold px-3 py-1 rounded-xl shadow-sm ${(row.paymentMethod || '').toLowerCase().includes('cash') ? 'bg-[#e0faec] text-[#1f956a]' : 'bg-[#e7f3ff] text-[#276ed2]'}`}>
+                          {row.paymentMethod}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-gray-600">{row.cashier}</td>
-                      <td className="px-5 py-4 text-right font-medium text-black">{row.total}</td>
+                      <td className="py-4 px-4 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Counter Staff</td>
+                      <td className="py-4 px-4 text-right font-black text-gray-900">฿{row.total.toLocaleString()}</td>
                     </tr>
                   ))}
+                  {historyData.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-gray-500 font-medium">ไม่พบประวัติการขายหน้าร้าน</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
-          </section>
+          </div>
         </div>
       </main>
     </div>
   )
 }
+
+export default SaleHistoryPage

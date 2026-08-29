@@ -33,7 +33,7 @@ export default function Sidebar() {
   const menuItems = role === 'STAFF' ? staffMenuItems : adminMenuItems
 
   return (
-    <aside className="w-64 shrink-0 bg-primary text-white flex flex-col sticky top-0 h-screen p-4">
+    <aside className="w-64 shrink-0 bg-primary text-white flex flex-col sticky top-0 h-screen p-4 text-base">
       {/* Logo */}
       <div className="flex items-center gap-3 mb-10 px-1">
         <img
@@ -42,8 +42,8 @@ export default function Sidebar() {
           className="w-10 h-10 rounded object-contain p-0.5"
         />
         <div>
-          <div className="font-bold text-xl leading-tight">YMR</div>
-          <div className="text-[11px] text-blue-200 tracking-wide">YUTH MARY CHONBURI</div>
+          <div className="font-bold text-xl leading-tight">YMR Scooter</div>
+          <div className="text-[11px] text-blue-200 tracking-wide">CHONBURI</div>
         </div>
       </div>
 
@@ -66,11 +66,11 @@ export default function Sidebar() {
       <div className="mt-auto pt-4 border-t border-white/15">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center font-semibold">
-            {role === 'STAFF' ? 'S' : 'ว'}
+            {role === 'STAFF' ? 'C' : 'ว'}
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-medium truncate">{role === 'STAFF' ? 'salesperson' : currentUser.name}</div>
-            <div className="text-xs text-blue-200 truncate">{role === 'STAFF' ? 'xxxxx@gmail.com' : currentUser.email}</div>
+            <div className="text-sm font-medium truncate">{role === 'STAFF' ? 'Counter Staff' : currentUser.name}</div>
+            <div className="text-xs text-blue-200 truncate">{role === 'STAFF' ? 'staff@ymr.com' : currentUser.email}</div>
           </div>
         </div>
         <button
