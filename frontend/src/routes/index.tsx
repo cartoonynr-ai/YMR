@@ -229,11 +229,6 @@ function Login() {
               />
               <span className="ml-2 text-gray-600">จดจำการเข้าสู่ระบบ</span>
             </label>      
-            <div className="flex items-center justify-end text-sm">
-              <a href="#" className="text-primary hover:text-primary-dark font-medium">
-                ลืมรหัสผ่าน?
-              </a>
-            </div>
           </div>
 
           {/* Submit Button */}
