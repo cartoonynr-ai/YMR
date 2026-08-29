@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react'
 import { Plus, Minus, CreditCard, X, Trash2, Printer, Package } from 'lucide-react'
 import { getProducts, type Product } from '../data/mockInventory'
 import { createOrder } from '../data/mockOrderData'
-
+import generatePayload from 'promptpay-qr'
+import QRCode from 'react-qr-code'
 import Sidebar from '../components/layout/Sidebar'
 
 export const Route = createFileRoute('/pos')({
@@ -20,7 +21,7 @@ function PosPage() {
   const [barcode, setBarcode] = useState('')
   const [items, setItems] = useState<{ id: string; name: string; price: number; qty: number; stock: number }[]>([])
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash')
-  const [cashReceived, setCashReceived] = useState<string>('')
+  const [cashReceived, setCashReceived] = useState<string>('0')
   
   const [inventory, setInventory] = useState<Product[]>([])
   
@@ -100,9 +101,9 @@ function PosPage() {
 
   useEffect(() => {
     if (total > 0) {
-      setCashReceived(total.toString())
+      setCashReceived('0')
     } else {
-      setCashReceived('')
+      setCashReceived('0')
     }
   }, [total])
 
@@ -112,7 +113,7 @@ function PosPage() {
       return
     }
 
-    const received = cashReceived === '' ? total : Number(cashReceived)
+    const received = cashReceived === '' ? 0 : Number(cashReceived)
     if (paymentMethod === 'cash' && received < total) {
       showToast('ยอดเงินที่รับมาไม่เพียงพอ', 'error')
       return
@@ -210,7 +211,7 @@ function PosPage() {
               <button 
                 onClick={() => {
                   setItems([])
-                  setCashReceived('')
+                  setCashReceived('0')
                   setBarcode('')
                   setShowReceipt(null)
                   loadData()
@@ -384,7 +385,7 @@ function PosPage() {
                 <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Counter Staff</span>
               </div>
               <button 
-                onClick={() => { setItems([]); setCashReceived(''); setBarcode(''); showToast('ล้างตะกร้าเรียบร้อย', 'success') }}
+                onClick={() => { setItems([]); setCashReceived('0'); setBarcode(''); showToast('ล้างตะกร้าเรียบร้อย', 'success') }}
                 className="text-[10px] font-black text-rose-500 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-colors uppercase tracking-widest flex items-center gap-1.5"
               >
                 <Trash2 className="w-3 h-3" /> Clear Cart
@@ -439,7 +440,7 @@ function PosPage() {
                             type="number"
                             value={cashReceived}
                             onChange={(e) => setCashReceived(e.target.value)}
-                            placeholder={total.toString()}
+                            placeholder="0"
                             className="w-full bg-gray-900 border border-gray-700 text-white text-lg rounded-xl focus:ring-2 focus:ring-[#00b6d5] focus:border-transparent block pl-8 pr-4 py-3 font-mono placeholder:text-gray-600 outline-none transition-all"
                           />
                         </div>
@@ -451,6 +452,19 @@ function PosPage() {
                           <span className="text-lg font-mono font-bold">฿{(Number(cashReceived) - total).toLocaleString()}</span>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {paymentMethod === 'transfer' && total > 0 && (
+                    <div className="mb-6 flex flex-col items-center justify-center p-4 bg-white rounded-xl">
+                      <div className="text-[#101828] font-bold mb-2">Scan to Pay (PromptPay)</div>
+                      <QRCode value={generatePayload('0875393563', { amount: total })} size={150} />
+                      <div className="mt-2 text-[#101828] font-mono font-bold text-lg">฿{total.toLocaleString()}</div>
+                    </div>
+                  )}
+                  {paymentMethod === 'transfer' && total === 0 && (
+                    <div className="mb-6 flex justify-center items-center h-37.5 bg-gray-800 rounded-xl border border-gray-700">
+                      <span className="text-gray-500 text-sm font-bold">Add items to show QR Code</span>
                     </div>
                   )}
                   
