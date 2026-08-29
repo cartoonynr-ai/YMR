@@ -74,14 +74,50 @@ export const getOrders = async (): Promise<Order[]> => {
   })
 }
 
-export const createOrder = async (orderData: Omit<Order, 'id' | 'date'>): Promise<{ success: boolean; orderId?: string; error?: string }> => {
+export const createOrder = async (orderData: Omit<Order, 'id' | 'date'>): Promise<{ success: boolean; orderId?: string; orderNumber?: string; error?: string }> => {
   const { data: sessionData } = await supabase.auth.getSession()
   const userId = sessionData.session?.user?.id
 
   // Start transaction logic via Supabase RPC or do it sequentially
   try {
-    // 1. Generate Order Number (pseudo logic, ideally should be sequence in DB)
-    const orderNumber = '#ORD-' + Math.floor(10000 + Math.random() * 90000)
+    // 1. Generate Order Number (OR-ddmmyy-XXXX) based on Thai Timezone
+    const now = new Date()
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Bangkok',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+    const parts = formatter.formatToParts(now)
+    const day = parts.find(p => p.type === 'day')?.value || '01'
+    const month = parts.find(p => p.type === 'month')?.value || '01'
+    const yearFull = parts.find(p => p.type === 'year')?.value || '2024'
+    const year = yearFull.slice(-2)
+    const ddmmyy = `${day}${month}${year}`
+
+    const startOfDayStr = `${yearFull}-${month}-${day}T00:00:00+07:00`
+
+    const { data: latestOrders, error: latestError } = await supabase
+      .from('orders')
+      .select('order_number')
+      .gte('created_at', startOfDayStr)
+      .like('order_number', `OR-${ddmmyy}-%`)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (latestError) throw latestError
+
+    let nextNumber = 1
+    if (latestOrders && latestOrders.length > 0) {
+      const lastOrderNumber = latestOrders[0].order_number
+      const splits = lastOrderNumber.split('-')
+      if (splits.length === 3) {
+        nextNumber = parseInt(splits[2], 10) + 1
+      }
+    }
+
+    const runningNumberStr = nextNumber.toString().padStart(4, '0')
+    const orderNumber = `OR-${ddmmyy}-${runningNumberStr}`
 
     // 2. Create customer if not Walk-in or use existing (simplify for now, just insert Walk-in)
     // Actually, let's insert a dummy customer for simplicity as per old mock
@@ -132,7 +168,7 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'date'>): Promis
       })
     }
 
-    return { success: true, orderId: order.id }
+    return { success: true, orderId: order.id, orderNumber: order.order_number }
   } catch (err: any) {
     return { success: false, error: err.message }
   }

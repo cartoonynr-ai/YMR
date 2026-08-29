@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { Plus, Minus, CreditCard, X, Trash2, Printer, Package } from 'lucide-react'
 import { getProducts, type Product } from '../services/inventory'
@@ -8,8 +8,13 @@ import QRCode from 'react-qr-code'
 import Sidebar from '../components/layout/Sidebar'
 
 export const Route = createFileRoute('/pos')({
-  beforeLoad: () => {
-    // Session is handled by AuthContext
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: '/' })
+    }
+    if (context.auth.user?.role?.toLowerCase() === 'admin') {
+      throw redirect({ to: '/dashboard' })
+    }
   },
   component: PosPage,
 })
@@ -130,7 +135,7 @@ function PosPage() {
     const result = await createOrder(orderData)
     if (result.success) {
       showToast(`บันทึกการขายสำเร็จ`, 'success')
-      setShowReceipt(result.orderId || 'SUCCESS')
+      setShowReceipt(result.orderNumber || result.orderId?.split('-')[0] || 'SUCCESS')
     } else {
       showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกการขาย', 'error')
     }

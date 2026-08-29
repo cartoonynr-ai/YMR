@@ -1,12 +1,17 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { getOrders, type Order } from '../services/orders'
 
 import Sidebar from '../components/layout/Sidebar'
 
 export const Route = createFileRoute('/sale_history')({
-  beforeLoad: () => {
-    // Session is handled by AuthContext
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: '/' })
+    }
+    if (context.auth.user?.role?.toLowerCase() === 'admin') {
+      throw redirect({ to: '/dashboard' })
+    }
   },
   component: SaleHistoryPage,
 })
@@ -99,7 +104,7 @@ function SaleHistoryPage() {
                       key={index} 
                       className="group hover:bg-gray-50/50 transition-colors"
                     >
-                      <td className="py-4 px-4 font-bold text-gray-900">{row.id}</td>
+                      <td className="py-4 px-4 font-bold text-gray-900">{row.order_number || row.id.split('-')[0]}</td>
                       <td className="py-4 px-4 text-[11px] font-medium text-gray-500">{row.date}</td>
                       <td className="py-4 px-4 text-center font-bold text-gray-900">{row.items.reduce((sum, item) => sum + item.qty, 0)}</td>
                       <td className="py-4 px-4 text-center">

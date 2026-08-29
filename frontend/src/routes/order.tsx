@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import AppLayout from '../components/layout/AppLayout'
 import { 
@@ -17,8 +17,13 @@ import { searchAddressByZipcode } from 'thai-address-database'
 import { getOrders, createOrder, cancelOrder, markOrderAsPaid, type Order } from '../services/orders'
 
 export const Route = createFileRoute('/order')({
-  beforeLoad: () => {
-    // Session is handled by AuthContext
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: '/' })
+    }
+    if (context.auth.user?.role?.toLowerCase() !== 'admin') {
+      throw redirect({ to: '/pos' })
+    }
   },
   component: OrderPage,
 })
@@ -295,7 +300,6 @@ function OrderPage() {
           <header className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900">Order Records</h1>
-              <span className="px-3 py-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]">LIVE</span>
             </div>
           </header>
 
@@ -327,7 +331,7 @@ function OrderPage() {
                     {orders.map((order) => (
                       <tr key={order.id} className="group hover:bg-gray-50/50 transition-colors">
                         <td className="py-4 px-4">
-                          <div className="font-bold text-gray-900">{order.id}</div>
+                          <div className="font-bold text-gray-900">{order.order_number || order.id.split('-')[0]}</div>
                           <div className="text-[11px] text-gray-500 font-medium mt-1">{order.date}</div>
                         </td>
                         <td className="py-4 px-4">
@@ -692,7 +696,7 @@ function OrderPage() {
             <div className="flex items-start justify-between px-8 py-6 bg-white border-b border-gray-100">
               <div>
                 <div className="flex items-center gap-3 mb-1">
-                  <h3 className="font-black text-gray-900 text-2xl tracking-tight">Order {selectedOrder.id}</h3>
+                  <h3 className="font-black text-gray-900 text-2xl tracking-tight">Order {selectedOrder.order_number || selectedOrder.id.split('-')[0]}</h3>
                   <span className={`text-[11px] font-bold px-3 py-1 ${getStatusColor(selectedOrder.status)} shadow-sm`}>
                     {selectedOrder.status}
                   </span>

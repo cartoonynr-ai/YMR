@@ -7,10 +7,12 @@ import RecentOrders from '../components/dashboard/RecentOrders'
 import StockMovements from '../components/dashboard/StockMovements'
 
 export const Route = createFileRoute('/dashboard')({
-  beforeLoad: () => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-    if (!token) {
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
       throw redirect({ to: '/' })
+    }
+    if (context.auth.user?.role?.toLowerCase() !== 'admin') {
+      throw redirect({ to: '/pos' })
     }
   },
   component: Dashboard,

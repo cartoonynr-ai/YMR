@@ -1,12 +1,21 @@
-import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
+import { createRootRouteWithContext, Outlet, redirect } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import type { QueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
+import type { AuthContextType } from '../context/AuthContext'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
+  auth: AuthContextType
 }>()({
+  beforeLoad: ({ context, location }) => {
+    if (!context.auth.isAuthenticated && location.pathname !== '/') {
+      throw redirect({
+        to: '/',
+      })
+    }
+  },
   component: RootComponent,
 })
 

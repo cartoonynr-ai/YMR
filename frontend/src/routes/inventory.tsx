@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState, useEffect, useMemo } from 'react'
 import AppLayout from '../components/layout/AppLayout'
 import {
@@ -29,9 +29,13 @@ import {
 } from '../services/inventory'
 
 export const Route = createFileRoute('/inventory')({
-  beforeLoad: () => {
-    // Session is handled by AuthContext but here we just check for token roughly or skip this.
-    // Actually Supabase stores in localstorage as well, but it's safe enough for UI guard.
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) {
+      throw redirect({ to: '/' })
+    }
+    if (context.auth.user?.role?.toLowerCase() !== 'admin') {
+      throw redirect({ to: '/pos' })
+    }
   },
   component: Inventory,
 })

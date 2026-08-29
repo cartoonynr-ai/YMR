@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, redirect } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Eye, EyeOff, ShieldCheck, Store, AlertCircle } from 'lucide-react'
 import { useForm, Controller } from 'react-hook-form'
@@ -16,6 +16,15 @@ const loginSchema = z.object({
 type LoginFormInputs = z.infer<typeof loginSchema>
 
 export const Route = createFileRoute('/')({
+  beforeLoad: ({ context }) => {
+    if (context.auth.isAuthenticated) {
+      if (context.auth.user?.role?.toLowerCase() === 'admin') {
+        throw redirect({ to: '/dashboard' })
+      } else {
+        throw redirect({ to: '/pos' })
+      }
+    }
+  },
   component: Login,
 })
 

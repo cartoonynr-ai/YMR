@@ -11,7 +11,7 @@ export interface User {
   email?: string;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;

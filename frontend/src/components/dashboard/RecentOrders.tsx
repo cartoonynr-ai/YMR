@@ -52,7 +52,7 @@ export default function RecentOrders() {
               >
                 {order.channel}
               </span>
-              <span className="font-medium text-gray-900">{order.id}</span>
+              <span className="font-medium text-gray-900">{order.order_number || order.id.split('-')[0]}</span>
               <span className="ml-auto font-semibold text-gray-900">
                 {new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(order.total)}
               </span>
