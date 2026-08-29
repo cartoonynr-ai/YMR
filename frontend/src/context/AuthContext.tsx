@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+import type { Session } from '@supabase/supabase-js';
 
-export type UserRole = 'admin' | 'pos' | null;
+export type UserRole = 'admin' | 'Staff' | 'staff' | null;
 
 export interface User {
   id: string;
@@ -11,61 +13,85 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (role: UserRole) => void;
-  logout: () => void;
+  session: Session | null;
+  loading: boolean;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    // Load from LocalStorage on initial render
-    const savedUser = localStorage.getItem('auth_user');
-    if (savedUser) {
-      try {
-        return JSON.parse(savedUser);
-      } catch (_) {
-        return null;
-      }
-    }
-    return null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Save to LocalStorage whenever user state changes
-    if (user) {
-      localStorage.setItem('auth_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('auth_user');
-    }
-  }, [user]);
+    // 1. Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        fetchUserProfile(session.user.id, session.user.email);
+      } else {
+        setLoading(false);
+      }
+    });
 
-  const login = (role: UserRole) => {
-    // Mock login logic
-    const mockUser: User = {
-      id: Math.random().toString(36).substring(7),
-      role,
-      name: role === 'admin' ? 'Administrator' : 'POS Staff',
-      email: role === 'admin' ? 'admin@shop.com' : 'pos@shop.com',
-    };
-    setUser(mockUser);
+    // 2. Listen to auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session?.user) {
+        fetchUserProfile(session.user.id, session.user.email);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchUserProfile = async (userId: string, email?: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('role, full_name')
+        .eq('id', userId)
+        .single();
+        
+      if (error) throw error;
+      
+      setUser({
+        id: userId,
+        role: data.role as UserRole,
+        name: data.full_name || undefined,
+        email: email,
+      });
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const logout = () => {
-    setUser(null);
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        login,
+        session,
+        loading,
         logout,
         isAuthenticated: !!user,
       }}
     >
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 }

@@ -1,15 +1,12 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
-import { getOrders, type Order } from '../data/mockOrderData'
+import { getOrders, type Order } from '../services/orders'
 
 import Sidebar from '../components/layout/Sidebar'
 
 export const Route = createFileRoute('/sale_history')({
   beforeLoad: () => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-    if (!token) {
-      throw redirect({ to: '/' })
-    }
+    // Session is handled by AuthContext
   },
   component: SaleHistoryPage,
 })
@@ -19,26 +16,29 @@ function SaleHistoryPage() {
   const [summaryData, setSummaryData] = useState([
     { title: 'Sales recorded', value: '0', subtitle: 'Last 3 days' },
     { title: 'Units sold', value: '0', subtitle: 'Across all receipts' },
-    { title: 'Gross total', value: '฿0', subtitle: 'Storefront only' },
+    { title: 'Gross total', value: '฿0', subtitle: 'POS only' },
     { title: 'Average receipt', value: '฿0', subtitle: 'Per sale' },
   ])
 
   useEffect(() => {
-    const allOrders = getOrders()
-    const storefrontOrders = allOrders.filter(o => o.channel === 'STOREFRONT' || o.channel === 'POS' || o.channel === 'Walk-in')
-    setHistoryData(storefrontOrders)
+    const fetchData = async () => {
+      const allOrders = await getOrders()
+      const POSOrders = allOrders.filter(o => o.channel === 'POS' || o.channel === 'Walk-in')
+      setHistoryData(POSOrders)
 
-    const totalSales = storefrontOrders.length
-    const unitsSold = storefrontOrders.reduce((sum, order) => sum + order.items.reduce((s, i) => s + i.qty, 0), 0)
-    const grossTotal = storefrontOrders.reduce((sum, order) => sum + order.total, 0)
-    const avgReceipt = totalSales > 0 ? grossTotal / totalSales : 0
+      const totalSales = POSOrders.length
+      const unitsSold = POSOrders.reduce((sum, order) => sum + order.items.reduce((s, i) => s + i.qty, 0), 0)
+      const grossTotal = POSOrders.reduce((sum, order) => sum + order.total, 0)
+      const avgReceipt = totalSales > 0 ? grossTotal / totalSales : 0
 
-    setSummaryData([
-      { title: 'Sales recorded', value: totalSales.toString(), subtitle: 'All time' },
-      { title: 'Units sold', value: unitsSold.toString(), subtitle: 'Across all receipts' },
-      { title: 'Gross total', value: `฿${grossTotal.toLocaleString()}`, subtitle: 'Storefront only' },
-      { title: 'Average receipt', value: `฿${avgReceipt.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, subtitle: 'Per sale' },
-    ])
+      setSummaryData([
+        { title: 'Sales recorded', value: totalSales.toString(), subtitle: 'All time' },
+        { title: 'Units sold', value: unitsSold.toString(), subtitle: 'Across all receipts' },
+        { title: 'Gross total', value: `฿${grossTotal.toLocaleString()}`, subtitle: 'POS only' },
+        { title: 'Average receipt', value: `฿${avgReceipt.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, subtitle: 'Per sale' },
+      ])
+    }
+    fetchData()
   }, [])
   return (
     <div className="flex h-screen bg-[#F3F4F6] text-gray-900 font-sans">
@@ -52,7 +52,7 @@ function SaleHistoryPage() {
           
           <header className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">Storefront Sales History</h1>
+              <h1 className="text-2xl font-bold text-gray-900">POS Sales History</h1>
             </div>
           </header>
 

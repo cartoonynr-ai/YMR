@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
-import { getProducts, type Product } from '../../data/mockInventory'
+import { getProducts, type Product } from '../../services/inventory'
 
 const statusBadge: Record<string, string> = {
   'Low stock': 'bg-amber-100 text-amber-700',
@@ -11,15 +11,18 @@ export default function StockCriticalityTable() {
   const [criticalItems, setCriticalItems] = useState<(Product & { status: string })[]>([])
 
   useEffect(() => {
-    const products = getProducts()
-    const critical = products
-      .filter(p => p.qty <= 5)
-      .map(p => ({
-        ...p,
-        status: p.qty === 0 ? 'Out of stock' : 'Low stock'
-      }))
-      .sort((a, b) => a.qty - b.qty)
-    setCriticalItems(critical.slice(0, 5))
+    const fetchData = async () => {
+      const products = await getProducts()
+      const critical = products
+        .filter(p => p.qty <= (p.threshold || 5))
+        .map(p => ({
+          ...p,
+          status: p.qty === 0 ? 'Out of stock' : 'Low stock'
+        }))
+        .sort((a, b) => a.qty - b.qty)
+      setCriticalItems(critical.slice(0, 5))
+    }
+    fetchData()
   }, [])
 
   return (

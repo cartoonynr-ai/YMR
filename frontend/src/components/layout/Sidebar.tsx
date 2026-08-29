@@ -1,7 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { LogOut } from 'lucide-react'
-import { currentUser } from '../../data/mockDashboard'
-import { useEffect, useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
 
 const adminMenuItems = [
   { label: 'Dashboard', to: '/dashboard', exact: true },
@@ -16,21 +15,15 @@ const staffMenuItems = [
 
 export default function Sidebar() {
   const navigate = useNavigate()
-  const [role, setRole] = useState<'ADMIN' | 'STAFF'>('ADMIN')
+  const { user, logout } = useAuth()
 
-  useEffect(() => {
-    const rememberedRole = (localStorage.getItem('rememberedRole') as 'ADMIN' | 'STAFF') || 'ADMIN'
-    setRole(rememberedRole)
-  }, [])
-
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('userRole')
-    localStorage.removeItem('rememberedRole')
+  const handleLogout = async () => {
+    await logout()
     navigate({ to: '/' })
   }
 
-  const menuItems = role === 'STAFF' ? staffMenuItems : adminMenuItems
+  const isStaff = user?.role === 'Staff' || user?.role === 'staff'
+  const menuItems = isStaff ? staffMenuItems : adminMenuItems
 
   return (
     <aside className="w-64 shrink-0 bg-primary text-white flex flex-col sticky top-0 h-screen p-4 text-base">
@@ -66,11 +59,11 @@ export default function Sidebar() {
       <div className="mt-auto pt-4 border-t border-white/15">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center font-semibold">
-            {role === 'STAFF' ? 'C' : 'ว'}
+            {user?.name ? user.name.charAt(0).toUpperCase() : (isStaff ? 'S' : 'A')}
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-medium truncate">{role === 'STAFF' ? 'Counter Staff' : currentUser.name}</div>
-            <div className="text-xs text-blue-200 truncate">{role === 'STAFF' ? 'staff@ymr.com' : currentUser.email}</div>
+            <div className="text-sm font-medium truncate">{user?.name || (isStaff ? 'Staff' : 'Admin')}</div>
+            <div className="text-xs text-blue-200 truncate">{user?.email || ''}</div>
           </div>
         </div>
         <button

@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import AppLayout from '../components/layout/AppLayout'
 import { 
@@ -12,16 +12,13 @@ import {
   CheckCircle,
   Ban
 } from 'lucide-react'
-import { getProducts, type Product } from '../data/mockInventory'
+import { getProducts, type Product } from '../services/inventory'
 import { searchAddressByZipcode } from 'thai-address-database'
-import { getOrders, createOrder, cancelOrder, markOrderAsPaid, type Order } from '../data/mockOrderData'
+import { getOrders, createOrder, cancelOrder, markOrderAsPaid, type Order } from '../services/orders'
 
 export const Route = createFileRoute('/order')({
   beforeLoad: () => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-    if (!token) {
-      throw redirect({ to: '/' })
-    }
+    // Session is handled by AuthContext
   },
   component: OrderPage,
 })
@@ -112,9 +109,9 @@ function OrderPage() {
   const createEmptyItem = () => ({ id: Math.random().toString(36).substring(7), sku: '', qty: 1 })
   const [orderItems, setOrderItems] = useState<{id: string, sku: string, qty: number}[]>([createEmptyItem()])
   
-  const loadData = () => {
-    setOrders(getOrders())
-    const invProducts = getProducts()
+  const loadData = async () => {
+    setOrders(await getOrders())
+    const invProducts = await getProducts()
     setProducts(invProducts)
   }
 
@@ -164,7 +161,7 @@ function OrderPage() {
     setTimeout(() => setToastMessage(''), 3000)
   }
 
-  const handleSaveOrder = () => {
+  const handleSaveOrder = async () => {
     if (orderItems.length === 0) {
       showToast('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ')
       return
@@ -176,7 +173,7 @@ function OrderPage() {
     
     const selectedAddress = addresses.find(a => a.id === selectedAddressId) || addresses[0]
     
-    if (channel !== 'STOREFRONT') {
+    if (channel !== 'POS') {
       if (!customerName || !customerPhone) {
         showToast('กรุณากรอกชื่อและเบอร์โทรศัพท์ผู้รับ สำหรับช่องทางออนไลน์')
         return
@@ -210,16 +207,16 @@ function OrderPage() {
 
     const newOrderData = {
       channel,
-      customerName: channel === 'STOREFRONT' ? 'Walk-in' : customerName,
-      customerPhone: channel === 'STOREFRONT' ? '-' : customerPhone,
-      address: channel === 'STOREFRONT' ? '-' : fullAddress,
+      customerName: channel === 'POS' ? 'Walk-in' : customerName,
+      customerPhone: channel === 'POS' ? '-' : customerPhone,
+      address: channel === 'POS' ? '-' : fullAddress,
       items,
       total: calculateTotal(),
       status: isPaid ? 'Paid' : 'Awaiting payment',
       paymentMethod: payment
     }
 
-    const result = createOrder(newOrderData)
+    const result = await createOrder(newOrderData)
     if (result.success) {
       showToast(`บันทึกคำสั่งซื้อ ${result.orderId} เรียบร้อย และตัดสต๊อกสำเร็จ!`, 'success')
       // reset form
@@ -228,31 +225,31 @@ function OrderPage() {
       setCustomerPhone('')
       setAddresses([{ id: 1, houseNumber: '', street: '', subDistrict: '', district: '', province: '', zipcode: '' }])
       setSelectedAddressId(1)
-      loadData()
+      await loadData()
     } else {
       showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกคำสั่งซื้อ')
     }
   }
 
-  const handleCancelOrder = () => {
+  const handleCancelOrder = async () => {
     if (!cancelOrderObj || !cancelReasonStr.trim()) return
-    const result = cancelOrder(cancelOrderObj.id, cancelReasonStr)
+    const result = await cancelOrder(cancelOrderObj.id, cancelReasonStr)
     if (result.success) {
       showToast('ยกเลิกคำสั่งซื้อและคืนสต็อกสำเร็จ!', 'success')
       setCancelOrderObj(null)
       setCancelReasonStr('')
-      loadData()
+      await loadData()
     } else {
       showToast(result.error || 'เกิดข้อผิดพลาด')
     }
   }
 
-  const handleMarkAsPaid = (order: Order) => {
+  const handleMarkAsPaid = async (order: Order) => {
     if (window.confirm(`ยืนยันการชำระเงินสำหรับออเดอร์ ${order.id} ใช่หรือไม่?`)) {
-      const result = markOrderAsPaid(order.id)
+      const result = await markOrderAsPaid(order.id)
       if (result.success) {
         showToast('อัปเดตสถานะเป็นชำระแล้ว!', 'success')
-        loadData()
+        await loadData()
       } else {
         showToast(result.error || 'เกิดข้อผิดพลาด')
       }
@@ -275,9 +272,7 @@ function OrderPage() {
   const getChannelColor = (ch: string) => {
     switch(ch) {
       case 'LINE': return 'text-[#1f956a] bg-[#e0faec] rounded-xl'
-      case 'FACEBOOK': 
       case 'FB': return 'text-[#276ed2] bg-[#e7f3ff] rounded-xl'
-      case 'STOREFRONT': 
       case 'POS': return 'text-[#1d295b] bg-[#f1f5f9] rounded-xl'
       default: return 'bg-gray-500 text-white rounded-xl'
     }
@@ -337,7 +332,7 @@ function OrderPage() {
                         </td>
                         <td className="py-4 px-4">
                           <span className={`text-[10px] font-bold px-2.5 py-1 ${getChannelColor(order.channel)}`}>
-                            {order.channel === 'FACEBOOK' ? 'FB' : order.channel === 'STOREFRONT' ? 'POS' : order.channel}
+                            {order.channel === 'FB' ? 'FB' : order.channel === 'POS' ? 'POS' : order.channel}
                           </span>
                         </td>
                         <td className="py-4 px-4">
@@ -397,7 +392,7 @@ function OrderPage() {
                 <section>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Channel</label>
                   <div className="flex p-1 bg-gray-100 rounded-xl">
-                    {['LINE', 'FACEBOOK', 'STOREFRONT'].map(ch => (
+                    {['LINE', 'FB', 'POS'].map(ch => (
                       <button
                         key={ch}
                         onClick={() => setChannel(ch)}
@@ -409,7 +404,7 @@ function OrderPage() {
                   </div>
                 </section>
 
-                {channel !== 'STOREFRONT' && (
+                {channel !== 'POS' && (
                   <section>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                       <Type className="w-3 h-3" />
@@ -463,7 +458,7 @@ function OrderPage() {
                   </section>
                 )}
 
-                {channel !== 'STOREFRONT' && (
+                {channel !== 'POS' && (
                   <section>
                     <div className="flex justify-between items-center mb-3">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">

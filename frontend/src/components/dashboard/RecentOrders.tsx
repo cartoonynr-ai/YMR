@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
-import { getOrders, type Order } from '../../data/mockOrderData'
+import { getOrders, type Order } from '../../services/orders'
 
 const channelBadge: Record<string, string> = {
   LINE: 'bg-green-100 text-green-700',
   FB: 'bg-blue-100 text-blue-700',
   POS: 'bg-slate-200 text-slate-700',
-  STOREFRONT: 'bg-slate-200 text-slate-700',
 }
 
 const statusBadge: Record<string, string> = {
@@ -20,8 +19,11 @@ export default function RecentOrders() {
 
   useEffect(() => {
     // get top 5 latest orders
-    const orders = getOrders()
-    setRecentOrders(orders.slice(0, 5))
+    const fetchData = async () => {
+      const orders = await getOrders()
+      setRecentOrders(orders.slice(0, 5))
+    }
+    fetchData()
   }, [])
 
   return (

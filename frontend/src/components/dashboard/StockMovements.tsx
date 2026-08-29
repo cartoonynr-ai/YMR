@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
-import { getMovements, type StockMovement } from '../../data/mockInventory'
+import { getMovements, type StockMovement } from '../../services/inventory'
 
 export default function StockMovements() {
   const [movements, setMovements] = useState<StockMovement[]>([])
 
   useEffect(() => {
-    const data = getMovements()
-    setMovements(data.slice(0, 5))
+    const fetchData = async () => {
+      const data = await getMovements()
+      setMovements(data.slice(0, 5))
+    }
+    fetchData()
   }, [])
 
   return (

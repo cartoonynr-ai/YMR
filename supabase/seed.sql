@@ -18,7 +18,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO public.users (id, email, full_name, role)
 VALUES
   ('11111111-1111-1111-1111-111111111111', 'admin@ymr.com', 'Super Admin', 'admin'),
-  ('22222222-2222-2222-2222-222222222222', 'staff@ymr.com', 'Counter Staff 1', 'counter_staff')
+  ('22222222-2222-2222-2222-222222222222', 'staff@ymr.com', 'Counter Staff 1', 'Staff')
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. Create Categories

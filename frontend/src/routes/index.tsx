@@ -4,7 +4,6 @@ import { Eye, EyeOff, ShieldCheck, Store, AlertCircle } from 'lucide-react'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
 const loginSchema = z.object({
@@ -45,7 +44,7 @@ function Login() {
     },
   })
 
-  const { login } = useAuth()
+  // ไม่ต้องใช้ login จาก useAuth แล้ว เพราะ Supabase จัดการ AuthState ให้เอง
 
   const onSubmit = async (data: LoginFormInputs) => {
     setApiError(null)
@@ -72,18 +71,16 @@ function Login() {
         // ตรวจสอบว่า Role ที่เลือกตรงกับในระบบหรือไม่
         const dbRole = userData.role === 'admin' ? 'ADMIN' : 'STAFF'
         if (dbRole !== data.role) {
+          await supabase.auth.signOut()
           throw new Error('ประเภทผู้ใช้งานไม่ถูกต้องกับบัญชีนี้')
         }
 
-        // ฟังก์ชันจัดการการจำ Session และอีเมล
-        const handleSuccessLogin = (token: string, path: string, role: 'admin' | 'pos') => {
-          login(role)
+        // ฟังก์ชันจัดการการจำอีเมล
+        const handleSuccessLogin = (path: string) => {
           if (data.remember_me) {
-            localStorage.setItem('token', token) // หมายเหตุ: Supabase จัดการ Session ให้แล้ว แต่นี่ยังคง logic เดิมไว้
             localStorage.setItem('rememberedEmail', data.email)
             localStorage.setItem('rememberedRole', data.role)
           } else {
-            sessionStorage.setItem('token', token)
             localStorage.removeItem('rememberedEmail')
             localStorage.removeItem('rememberedRole')
           }
@@ -92,9 +89,9 @@ function Login() {
 
         // Login สำเร็จ
         if (dbRole === 'ADMIN') {
-          handleSuccessLogin(authData.session?.access_token || '', '/dashboard', 'admin')
+          handleSuccessLogin('/dashboard')
         } else {
-          handleSuccessLogin(authData.session?.access_token || '', '/pos', 'pos')
+          handleSuccessLogin('/pos')
         }
       }
     } catch (err: any) {

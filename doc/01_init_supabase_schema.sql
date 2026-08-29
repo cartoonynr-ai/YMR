@@ -8,7 +8,7 @@ CREATE TABLE public.users (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   full_name TEXT,
-  role TEXT NOT NULL CHECK (role IN ('admin', 'counter_staff')),
+  role TEXT NOT NULL CHECK (role IN ('admin', 'Staff', 'staff')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

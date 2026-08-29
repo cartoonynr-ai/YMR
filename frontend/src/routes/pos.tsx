@@ -1,18 +1,15 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { Plus, Minus, CreditCard, X, Trash2, Printer, Package } from 'lucide-react'
-import { getProducts, type Product } from '../data/mockInventory'
-import { createOrder } from '../data/mockOrderData'
+import { getProducts, type Product } from '../services/inventory'
+import { createOrder } from '../services/orders'
 import generatePayload from 'promptpay-qr'
 import QRCode from 'react-qr-code'
 import Sidebar from '../components/layout/Sidebar'
 
 export const Route = createFileRoute('/pos')({
   beforeLoad: () => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-    if (!token) {
-      throw redirect({ to: '/' })
-    }
+    // Session is handled by AuthContext
   },
   component: PosPage,
 })
@@ -29,8 +26,8 @@ function PosPage() {
   const [toastType, setToastType] = useState<'error' | 'success'>('error')
   const [showReceipt, setShowReceipt] = useState<string | null>(null)
 
-  const loadData = () => {
-    const products = getProducts()
+  const loadData = async () => {
+    const products = await getProducts()
     setInventory(products)
   }
 
@@ -107,7 +104,7 @@ function PosPage() {
     }
   }, [total])
 
-  const handleSaveSale = () => {
+  const handleSaveSale = async () => {
     if (items.length === 0) {
       showToast('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ', 'error')
       return
@@ -120,7 +117,7 @@ function PosPage() {
     }
 
     const orderData = {
-      channel: 'STOREFRONT',
+      channel: 'POS',
       customerName: 'Walk-in counter',
       customerPhone: '-',
       address: '-',
@@ -130,10 +127,10 @@ function PosPage() {
       paymentMethod: paymentMethod === 'cash' ? 'CASH' : 'BANK TRANSFER'
     }
 
-    const result = createOrder(orderData)
+    const result = await createOrder(orderData)
     if (result.success) {
-      showToast(`บันทึกการขายสำเร็จ (Receipt: ${result.orderId})`, 'success')
-      setShowReceipt(result.orderId!)
+      showToast(`บันทึกการขายสำเร็จ`, 'success')
+      setShowReceipt(result.orderId || 'SUCCESS')
     } else {
       showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกการขาย', 'error')
     }
