@@ -220,15 +220,25 @@ function Inventory() {
 
     const { name, sku, barcode, brand, compatibility, category, price, qty, threshold } = productForm
 
-    if (!name || !sku || !category) {
+    if (!name || !sku || !barcode || !category) {
       setAlert({ message: 'กรุณากรอกข้อมูลที่จำเป็น (*) ให้ครบถ้วน', type: 'error' })
+      return
+    }
+
+    if (sku.trim().length !== 12) {
+      setAlert({ message: 'SKU ต้องมี 12 ตัวอักษรเท่านั้น', type: 'error' })
+      return
+    }
+
+    if (barcode.trim().length !== 13) {
+      setAlert({ message: 'Barcode ต้องมี 13 ตัวอักษรเท่านั้น', type: 'error' })
       return
     }
 
     const pData: Product = {
       name: name.trim(),
       sku: sku.trim().toUpperCase(),
-      barcode: barcode?.trim() || '',
+      barcode: barcode.trim(),
       brand: brand?.trim() || '',
       compatibility: compatibility?.trim() || '',
       category: category,
@@ -716,8 +726,10 @@ function Inventory() {
                     <input
                       type="text"
                       required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
-                      placeholder="Enter SKU"
+                      placeholder="Enter SKU (12 chars)"
                       disabled={!!editingProduct} // SKU shouldn't be edited once created
+                      maxLength={12}
+                      minLength={12}
                       value={productForm.sku || ''}
                       onChange={(e) => setProductForm((f) => ({ ...f, sku: e.target.value }))}
                       className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-gray-50/50 disabled:opacity-50"
@@ -727,11 +739,14 @@ function Inventory() {
                   {/* Barcode */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                      Barcode
+                      Barcode *
                     </label>
                     <input
                       type="text"
-                      placeholder="Enter Barcode"
+                      required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
+                      placeholder="Enter Barcode (13 chars)"
+                      maxLength={13}
+                      minLength={13}
                       value={productForm.barcode || ''}
                       onChange={(e) => setProductForm((f) => ({ ...f, barcode: e.target.value }))}
                       className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-gray-50/50"

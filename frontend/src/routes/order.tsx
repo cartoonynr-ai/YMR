@@ -292,18 +292,13 @@ function OrderPage() {
           <span className="font-bold text-sm">{toastMessage}</span>
         </div>
       )}
-      <div className="min-h-screen bg-[#F3F4F6] text-gray-900 pb-24 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-96 bg-linear-to-b from-white to-transparent opacity-50 pointer-events-none"></div>
-        
-        <div className="max-w-[1600px] mx-auto px-4 md:px-8 relative z-10">
-          
-          <header className="flex justify-between items-center mb-8">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">Order Records</h1>
-            </div>
-          </header>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Order Records</h1>
+        </div>
+      </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[65%_1fr] gap-6 xl:gap-8 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[65%_1fr] gap-6 xl:gap-8 items-start">
             
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
               <div className="flex justify-between items-end mb-6">
@@ -682,10 +677,6 @@ function OrderPage() {
             </div>
 
           </div>
-        </div>
-
-
-      </div>
       
       {/* Modal */}
       {selectedOrder && (
