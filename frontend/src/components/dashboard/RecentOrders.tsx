@@ -18,10 +18,10 @@ export default function RecentOrders() {
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
 
   useEffect(() => {
-    // get top 5 latest orders
+    // get top 4 latest orders
     const fetchData = async () => {
       const orders = await getOrders()
-      setRecentOrders(orders.slice(0, 5))
+      setRecentOrders(orders.slice(0, 4))
     }
     fetchData()
   }, [])

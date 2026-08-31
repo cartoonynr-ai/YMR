@@ -7,7 +7,7 @@ export default function StockMovements() {
   useEffect(() => {
     const fetchData = async () => {
       const data = await getMovements()
-      setMovements(data.slice(0, 5))
+      setMovements(data.slice(0, 4))
     }
     fetchData()
   }, [])
