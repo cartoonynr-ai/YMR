@@ -221,14 +221,11 @@ function Inventory() {
     const { name, sku, barcode, brand, compatibility, category, price, qty, threshold } = productForm
 
     if (!name || !sku || !barcode || !category) {
-      setAlert({ message: 'กรุณากรอกข้อมูลที่จำเป็น (*) ให้ครบถ้วน', type: 'error' })
+      setAlert({ message: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน', type: 'error' })
       return
     }
 
-    if (sku.trim().length !== 12) {
-      setAlert({ message: 'SKU ต้องมี 12 ตัวอักษรเท่านั้น', type: 'error' })
-      return
-    }
+
 
     if (barcode.trim().length !== 13) {
       setAlert({ message: 'Barcode ต้องมี 13 ตัวอักษรเท่านั้น', type: 'error' })
@@ -464,7 +461,7 @@ function Inventory() {
                         <tr key={product.sku} className="border-b border-gray-100 hover:bg-gray-50/40 transition-colors">
                           <td className="px-6 py-4">
                             <div className="font-medium text-gray-900">{product.name}</div>
-                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-400 mt-1">
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-900 font-medium mt-1">
                               <span>SKU: {product.sku}</span>
                               {product.barcode && <span>Barcode: {product.barcode}</span>}
                               {product.brand && <span>Brand: {product.brand}</span>}
@@ -556,7 +553,7 @@ function Inventory() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="font-medium text-gray-900">{move.productName}</div>
-                          <div className="text-xs text-gray-400 mt-0.5">SKU: {move.sku}</div>
+                          <div className="text-xs text-gray-900 font-medium mt-0.5">SKU: {move.sku}</div>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className={`font-semibold text-sm px-2 py-0.5 rounded-full ${
@@ -705,7 +702,7 @@ function Inventory() {
                 {/* Product Name */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                    Name Product *
+                    Name Product
                   </label>
                   <input
                     type="text"
@@ -721,34 +718,34 @@ function Inventory() {
                   {/* SKU */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                      SKU *
+                      SKU [Brand]-[Type]-[Year]-[Spec]
                     </label>
                     <input
                       type="text"
                       required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
-                      placeholder="Enter SKU (12 chars)"
+                      placeholder="e.g. HONDA-BUMPER-2023-FR"
                       disabled={!!editingProduct} // SKU shouldn't be edited once created
-                      maxLength={12}
-                      minLength={12}
                       value={productForm.sku || ''}
                       onChange={(e) => setProductForm((f) => ({ ...f, sku: e.target.value }))}
-                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-gray-50/50 disabled:opacity-50"
+                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-gray-50/50 disabled:opacity-100 disabled:text-black disabled:bg-gray-200 disabled:cursor-not-allowed"
                     />
                   </div>
 
                   {/* Barcode */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                      Barcode *
+                      Barcode
                     </label>
                     <input
                       type="text"
+                      inputMode="numeric"
+                      pattern="\d*"
                       required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
                       placeholder="Enter Barcode (13 chars)"
                       maxLength={13}
                       minLength={13}
                       value={productForm.barcode || ''}
-                      onChange={(e) => setProductForm((f) => ({ ...f, barcode: e.target.value }))}
+                      onChange={(e) => setProductForm((f) => ({ ...f, barcode: e.target.value.replace(/\D/g, '') }))}
                       className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-gray-50/50"
                     />
                   </div>
@@ -788,7 +785,7 @@ function Inventory() {
                   {/* Category */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                      Category *
+                      Category
                     </label>
                     <select
                       value={productForm.category || ''}
@@ -806,7 +803,7 @@ function Inventory() {
                   {/* Price */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                      Price (฿) *
+                      Price (฿)
                     </label>
                     <input
                       type="number"
@@ -824,7 +821,7 @@ function Inventory() {
                   {/* Stock QTY */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                      Stock Quantity *
+                      Stock Quantity
                     </label>
                     <input
                       type="number"
@@ -840,7 +837,7 @@ function Inventory() {
                   {/* Threshold */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                      Threshold *
+                      Threshold
                     </label>
                     <input
                       type="number"
@@ -896,7 +893,7 @@ function Inventory() {
                 {/* English Name (ID) */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                    Category Name (English) *
+                    Category Name (English)
                   </label>
                   <input
                     type="text"
@@ -905,14 +902,14 @@ function Inventory() {
                     placeholder="Engine Oil, Spark Plugs"
                     value={categoryForm.name || ''}
                     onChange={(e) => setCategoryForm((f) => ({ ...f, name: e.target.value }))}
-                    className="w-full px-3.5 py-2 border rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 disabled:opacity-50"
+                    className="w-full px-3.5 py-2 border rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 disabled:opacity-100 disabled:text-black disabled:bg-gray-200 disabled:cursor-not-allowed"
                   />
                 </div>
 
                 {/* Thai Name */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                    Thai Name *
+                    Thai Name
                   </label>
                   <input
                     type="text"
@@ -965,7 +962,7 @@ function Inventory() {
                 </p>
                 {deleteTarget.type === 'category' && (
                   <p className="text-xs text-rose-500 mt-2 font-medium bg-rose-50/70 p-2 rounded border border-rose-100">
-                    * จะลบได้ต่อเมื่อไม่มีสินค้าตัวใดอ้างอิงถึงหมวดหมู่นี้อยู่
+                    หมายเหตุ: จะลบได้ต่อเมื่อไม่มีสินค้าตัวใดอ้างอิงถึงหมวดหมู่นี้อยู่
                   </p>
                 )}
               </div>

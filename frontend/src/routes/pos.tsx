@@ -275,7 +275,7 @@ function PosPage() {
                             </div>
                             <div className="min-w-0">
                               <div className="text-sm font-bold text-gray-900 truncate">{product.name}</div>
-                              <div className="text-[10px] text-gray-500 font-medium">SKU: {product.sku}</div>
+                              <div className="text-[10px] text-gray-900 font-medium">SKU: {product.sku}</div>
                             </div>
                             <div className="ml-auto text-right shrink-0">
                               <div className="text-sm font-black text-gray-900">฿{product.price.toLocaleString()}</div>
