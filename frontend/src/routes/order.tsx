@@ -100,6 +100,16 @@ function OrderPage() {
     setAddresses(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a))
   }
 
+  const handleRemoveAddress = (idToRemove: number) => {
+    if (selectedAddressId === idToRemove) {
+      const firstRemaining = addresses.find(a => a.id !== idToRemove);
+      if (firstRemaining) {
+        setSelectedAddressId(firstRemaining.id);
+      }
+    }
+    setAddresses(prev => prev.filter(a => a.id !== idToRemove));
+  }
+
   const canFillAddress = !!customerName.trim() && customerPhone.replace(/\D/g, '').length === 10;
   const isAllAddressesValid = addresses.every(addr => 
     addr.houseNumber.trim() !== '' && 
@@ -493,6 +503,17 @@ function OrderPage() {
                                 <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-sm font-bold">For shipping</span>
                               )}
                             </label>
+                            {idx > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveAddress(addr.id)}
+                                disabled={!canFillAddress}
+                                className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:hover:bg-transparent shrink-0"
+                                title="ลบที่อยู่"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                           
                           <div className="grid grid-cols-3 gap-3 mt-3">
