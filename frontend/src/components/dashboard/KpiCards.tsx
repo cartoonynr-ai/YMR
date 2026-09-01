@@ -64,7 +64,7 @@ export default function KpiCards() {
   }, [])
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" aria-label="KPI Cards">
       {kpis.map((kpi) => (
         <div
           key={kpi.id}
