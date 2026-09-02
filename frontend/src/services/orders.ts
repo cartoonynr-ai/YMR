@@ -126,11 +126,31 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'date'>): Promis
       phone: orderData.customerPhone !== '-' ? orderData.customerPhone : null
     }).select().single()
 
+    let customerAddressId = null;
+    if (orderData.address && orderData.address !== '-') {
+      try {
+        const parsedAddr = JSON.parse(orderData.address);
+        const { data: addr } = await supabase.from('customer_addresses').insert({
+          customer_id: customer?.id,
+          house_number: parsedAddr.houseNumber,
+          street: parsedAddr.street,
+          sub_district: parsedAddr.subDistrict,
+          district: parsedAddr.district,
+          province: parsedAddr.province,
+          zipcode: parsedAddr.zipcode
+        }).select().single();
+        if (addr) customerAddressId = addr.id;
+      } catch (e) {
+        console.error('Error saving address:', e);
+      }
+    }
+
     // 3. Create Order
     const { data: order, error: orderError } = await supabase.from('orders').insert({
       order_number: orderNumber,
       channel: orderData.channel,
       customer_id: customer?.id,
+      customer_address_id: customerAddressId,
       total: orderData.total,
       status: orderData.status,
       payment_method: orderData.paymentMethod,

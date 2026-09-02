@@ -46,7 +46,7 @@ function SaleHistoryPage() {
     fetchData()
   }, [])
   return (
-    <div className="flex h-screen bg-[#F3F4F6] text-gray-900 font-sans">
+    <div className="flex h-screen bg-[#F3F4F6] text-gray-900 font-sans" aria-label="Sale History">
       <Sidebar />
 
       {/* Main Content */}

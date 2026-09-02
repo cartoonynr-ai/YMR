@@ -27,7 +27,7 @@ export default function RecentOrders() {
   }, [])
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100" aria-label="Recent Orders">
       {/* Panel Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <h2 className="font-semibold text-gray-900">Recent Orders</h2>

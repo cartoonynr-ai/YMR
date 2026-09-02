@@ -100,6 +100,16 @@ function OrderPage() {
     setAddresses(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a))
   }
 
+  const handleRemoveAddress = (idToRemove: number) => {
+    if (selectedAddressId === idToRemove) {
+      const firstRemaining = addresses.find(a => a.id !== idToRemove);
+      if (firstRemaining) {
+        setSelectedAddressId(firstRemaining.id);
+      }
+    }
+    setAddresses(prev => prev.filter(a => a.id !== idToRemove));
+  }
+
   const canFillAddress = !!customerName.trim() && customerPhone.replace(/\D/g, '').length === 10;
   const isAllAddressesValid = addresses.every(addr => 
     addr.houseNumber.trim() !== '' && 
@@ -277,7 +287,8 @@ function OrderPage() {
   const getChannelColor = (ch: string) => {
     switch(ch) {
       case 'LINE': return 'text-[#1f956a] bg-[#e0faec] rounded-xl'
-      case 'FB': return 'text-[#276ed2] bg-[#e7f3ff] rounded-xl'
+      case 'FB':
+      case 'Facebook': return 'text-[#276ed2] bg-[#e7f3ff] rounded-xl'
       case 'POS': return 'text-[#1d295b] bg-[#f1f5f9] rounded-xl'
       default: return 'bg-gray-500 text-white rounded-xl'
     }
@@ -331,7 +342,7 @@ function OrderPage() {
                         </td>
                         <td className="py-4 px-4">
                           <span className={`text-[10px] font-bold px-2.5 py-1 ${getChannelColor(order.channel)}`}>
-                            {order.channel === 'FB' ? 'FB' : order.channel === 'POS' ? 'POS' : order.channel}
+                            {order.channel === 'FB' || order.channel === 'Facebook' ? 'Facebook' : order.channel === 'POS' ? 'POS' : order.channel}
                           </span>
                         </td>
                         <td className="py-4 px-4">
@@ -391,7 +402,7 @@ function OrderPage() {
                 <section>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Channel</label>
                   <div className="flex p-1 bg-gray-100 rounded-xl">
-                    {['LINE', 'FB', 'POS'].map(ch => (
+                    {['LINE', 'Facebook', 'POS'].map(ch => (
                       <button
                         key={ch}
                         onClick={() => setChannel(ch)}
@@ -492,6 +503,17 @@ function OrderPage() {
                                 <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-sm font-bold">For shipping</span>
                               )}
                             </label>
+                            {idx > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveAddress(addr.id)}
+                                disabled={!canFillAddress}
+                                className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:hover:bg-transparent shrink-0"
+                                title="ลบที่อยู่"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                           
                           <div className="grid grid-cols-3 gap-3 mt-3">
@@ -680,8 +702,8 @@ function OrderPage() {
       
       {/* Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-gray-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-transparent backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-sm w-full max-w-3xl overflow-hidden border border-gray-200 flex flex-col max-h-[90vh]">
             
             {/* Header */}
             <div className="flex items-start justify-between px-8 py-6 bg-white border-b border-gray-100">
@@ -743,7 +765,7 @@ function OrderPage() {
                     <div className="inline-flex items-center gap-2 text-xs font-semibold bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
                       <span className="text-gray-400">CHANNEL:</span>
                       <span className={`px-2 py-0.5 rounded-md ${getChannelColor(selectedOrder.channel)}`}>
-                        {selectedOrder.channel}
+                        {selectedOrder.channel === 'FB' ? 'Facebook' : selectedOrder.channel}
                       </span>
                     </div>
                     {selectedOrder.paymentMethod && (
@@ -764,7 +786,8 @@ function OrderPage() {
                       {(() => {
                         try {
                           const addr = JSON.parse(selectedOrder.address);
-                          return `${addr.houseNumber} ${addr.street}\nต.${addr.subDistrict} อ.${addr.district}\nจ.${addr.province} ${addr.zipcode}`;
+                          // address object keys from Supabase are snake_case: house_number, street, etc.
+                          return `${addr.house_number || ''} ${addr.street || ''}\nต.${addr.sub_district || ''} อ.${addr.district || ''}\nจ.${addr.province || ''} ${addr.zipcode || ''}`.trim();
                         } catch (e) {
                           return selectedOrder.address;
                         }
@@ -803,7 +826,7 @@ function OrderPage() {
                       <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
                         <td className="py-4 px-6">
                           <div className="font-bold text-gray-900 mb-0.5">{item.name}</div>
-                          <div className="text-xs text-gray-400 font-medium">SKU: {item.sku}</div>
+                          <div className="text-xs text-gray-900 font-medium">SKU: {item.sku}</div>
                         </td>
                         <td className="py-4 px-6 text-center font-bold text-gray-700 bg-gray-50/30">{item.qty}</td>
                         <td className="py-4 px-6 text-right font-bold text-gray-900">
@@ -833,8 +856,8 @@ function OrderPage() {
       )}
       {/* Cancel Order Modal */}
       {cancelOrderObj && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-transparent backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
             {/* Header */}
             <div className="bg-[#e70029] p-5 flex justify-between items-center text-white">
               <h3 className="text-2xl font-bold">ยกเลิกคำสั่งซื้อ {cancelOrderObj.id}</h3>
