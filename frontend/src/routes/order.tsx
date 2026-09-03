@@ -110,9 +110,10 @@ function OrderPage() {
     setAddresses(prev => prev.filter(a => a.id !== idToRemove));
   }
 
-  const canFillAddress = !!customerName.trim() && customerPhone.replace(/\D/g, '').length === 10;
+  const canFillAddress = !!customerName.trim() && /^0\d{8,9}$/.test(customerPhone.replace(/\D/g, ''));
   const isAllAddressesValid = addresses.every(addr => 
     addr.houseNumber.trim() !== '' && 
+    addr.street.trim() !== '' && 
     addr.subDistrict.trim() !== '' && 
     addr.district.trim() !== '' && 
     addr.province.trim() !== '' && 
@@ -193,9 +194,13 @@ function OrderPage() {
         showToast('กรุณากรอกชื่อและเบอร์โทรศัพท์ผู้รับ สำหรับช่องทางออนไลน์')
         return
       }
+      if (!/^0\d{8,9}$/.test(customerPhone)) {
+        showToast('เบอร์โทรศัพท์ไม่ถูกต้อง (ต้องขึ้นต้นด้วย 0 และมี 9-10 หลัก)')
+        return
+      }
       
       const { houseNumber, street, subDistrict, district, province, zipcode } = selectedAddress
-      if (!houseNumber || !street || !subDistrict || !district || !province || !zipcode) {
+      if (!houseNumber.trim() || !street.trim() || !subDistrict.trim() || !district.trim() || !province.trim() || !zipcode.trim()) {
         showToast('กรุณากรอกข้อมูลที่อยู่จัดส่งให้ครบทุกช่อง')
         return
       }
@@ -221,7 +226,7 @@ function OrderPage() {
     })
 
     const newOrderData = {
-      channel,
+      channel: channel === 'Facebook' ? 'FB' : channel,
       customerName: channel === 'POS' ? 'Walk-in' : customerName,
       customerPhone: channel === 'POS' ? '-' : customerPhone,
       address: channel === 'POS' ? '-' : fullAddress,
