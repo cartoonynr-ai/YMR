@@ -20,7 +20,7 @@ export default function StockCriticalityTable() {
           status: p.qty === 0 ? 'Out of stock' : 'Low stock'
         }))
         .sort((a, b) => a.qty - b.qty)
-      setCriticalItems(critical.slice(0, 5))
+      setCriticalItems(critical.slice(0, 2))
     }
     fetchData()
   }, [])

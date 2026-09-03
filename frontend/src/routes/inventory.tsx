@@ -810,8 +810,8 @@ function Inventory() {
                       required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
                       min="0"
                       placeholder="Enter Price"
-                      value={productForm.price === 0 ? '' : productForm.price}
-                      onChange={(e) => setProductForm((f) => ({ ...f, price: Number(e.target.value) }))}
+                      value={productForm.price ?? ''}
+                      onChange={(e) => setProductForm((f) => ({ ...f, price: e.target.value === '' ? undefined : Number(e.target.value) }))}
                       className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
                     />
                   </div>
@@ -828,8 +828,8 @@ function Inventory() {
                       required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
                       min="0"
                       placeholder="Enter Stock QTY"
-                      value={productForm.qty === 0 ? '' : productForm.qty}
-                      onChange={(e) => setProductForm((f) => ({ ...f, qty: Number(e.target.value) }))}
+                      value={productForm.qty ?? ''}
+                      onChange={(e) => setProductForm((f) => ({ ...f, qty: e.target.value === '' ? undefined : Number(e.target.value) }))}
                       className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
                     />
                   </div>
@@ -844,8 +844,8 @@ function Inventory() {
                       required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
                       min="0"
                       placeholder="Enter Threshold"
-                      value={productForm.threshold === 0 ? '' : productForm.threshold}
-                      onChange={(e) => setProductForm((f) => ({ ...f, threshold: Number(e.target.value) }))}
+                      value={productForm.threshold ?? ''}
+                      onChange={(e) => setProductForm((f) => ({ ...f, threshold: e.target.value === '' ? undefined : Number(e.target.value) }))}
                       className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
                     />
                   </div>
