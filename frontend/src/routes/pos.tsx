@@ -109,35 +109,43 @@ function PosPage() {
     }
   }, [total])
 
+  const [isSaving, setIsSaving] = useState(false)
+
   const handleSaveSale = async () => {
-    if (items.length === 0) {
-      showToast('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ', 'error')
-      return
-    }
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      if (items.length === 0) {
+        showToast('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ', 'error')
+        return
+      }
 
-    const received = cashReceived === '' ? 0 : Number(cashReceived)
-    if (paymentMethod === 'cash' && received < total) {
-      showToast('ยอดเงินที่รับมาไม่เพียงพอ', 'error')
-      return
-    }
+      const received = cashReceived === '' ? 0 : Number(cashReceived)
+      if (paymentMethod === 'cash' && received < total) {
+        showToast('ยอดเงินที่รับมาไม่เพียงพอ', 'error')
+        return
+      }
 
-    const orderData = {
-      channel: 'POS',
-      customerName: 'Walk-in counter',
-      customerPhone: '-',
-      address: '-',
-      items: items.map(i => ({ sku: i.id, name: i.name, price: i.price, qty: i.qty })),
-      total: total,
-      status: 'Paid',
-      paymentMethod: paymentMethod === 'cash' ? 'CASH' : 'BANK TRANSFER'
-    }
+      const orderData = {
+        channel: 'POS',
+        customerName: 'Walk-in counter',
+        customerPhone: '-',
+        address: '-',
+        items: items.map(i => ({ sku: i.id, name: i.name, price: i.price, qty: i.qty })),
+        total: total,
+        status: 'Paid',
+        paymentMethod: paymentMethod === 'cash' ? 'CASH' : 'BANK TRANSFER'
+      }
 
-    const result = await createOrder(orderData)
-    if (result.success) {
-      showToast(`บันทึกการขายสำเร็จ`, 'success')
-      setShowReceipt(result.orderNumber || result.orderId?.split('-')[0] || 'SUCCESS')
-    } else {
-      showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกการขาย', 'error')
+      const result = await createOrder(orderData)
+      if (result.success) {
+        showToast(`บันทึกการขายสำเร็จ`, 'success')
+        setShowReceipt(result.orderNumber || result.orderId?.split('-')[0] || 'SUCCESS')
+      } else {
+        showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกการขาย', 'error')
+      }
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -488,10 +496,10 @@ function PosPage() {
                   
                   <button 
                     onClick={handleSaveSale}
-                    disabled={items.length === 0 || (paymentMethod === 'cash' && (cashReceived === '' || Number(cashReceived) < total))}
+                    disabled={items.length === 0 || isSaving || (paymentMethod === 'cash' && (cashReceived === '' || Number(cashReceived) < total))}
                     className="w-full bg-white hover:bg-gray-100 text-[#101828] font-black py-4 px-6 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_14px_0_rgb(255,255,255,0.15)] flex justify-center items-center"
                   >
-                    <span>Save sale & deduct stock</span>
+                    <span>{isSaving ? 'Saving...' : 'Save sale & deduct stock'}</span>
                   </button>
                   
                   <div className="text-center mt-3 flex items-center justify-center gap-2 opacity-50">

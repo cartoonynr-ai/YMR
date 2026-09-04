@@ -170,6 +170,7 @@ function OrderPage() {
   // Toast State
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'error' | 'success'>('error')
+  const [isSaving, setIsSaving] = useState(false)
 
   const showToast = (msg: string, type: 'error' | 'success' = 'error') => {
     setToastMessage(msg)
@@ -178,10 +179,13 @@ function OrderPage() {
   }
 
   const handleSaveOrder = async () => {
-    if (orderItems.length === 0) {
-      showToast('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ')
-      return
-    }
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      if (orderItems.length === 0) {
+        showToast('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ')
+        return
+      }
     if (orderItems.some(item => !item.sku)) {
       showToast('กรุณาเลือกสินค้าให้ครบทุกรายการ')
       return
@@ -238,7 +242,7 @@ function OrderPage() {
 
     const result = await createOrder(newOrderData)
     if (result.success) {
-      showToast(`บันทึกคำสั่งซื้อ ${result.orderId} เรียบร้อย และตัดสต๊อกสำเร็จ!`, 'success')
+      showToast(`บันทึกคำสั่งซื้อ ${result.orderNumber || result.orderId} เรียบร้อย และตัดสต๊อกสำเร็จ!`, 'success')
       // reset form
       setOrderItems([createEmptyItem()])
       setCustomerName('')
@@ -248,6 +252,9 @@ function OrderPage() {
       await loadData()
     } else {
       showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกคำสั่งซื้อ')
+    }
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -695,8 +702,12 @@ function OrderPage() {
                       </label>
                     </div>
 
-                    <button onClick={handleSaveOrder} className="w-full text-white bg-[#07090c] hover:bg-gray-800 font-black text-sm py-4 rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2">
-                      Save order & deduct stock
+                    <button 
+                      onClick={handleSaveOrder} 
+                      disabled={isSaving}
+                      className={`w-full text-white bg-[#07090c] hover:bg-gray-800 font-black text-sm py-4 rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all flex items-center justify-center gap-2 ${isSaving ? 'opacity-50 cursor-not-allowed transform-none' : 'transform hover:-translate-y-0.5 active:translate-y-0'}`}
+                    >
+                      {isSaving ? 'Saving...' : 'Save order & deduct stock'}
                     </button>
                   </div>
                 </section>

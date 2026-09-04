@@ -95,14 +95,12 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'date'>): Promis
     const year = yearFull.slice(-2)
     const ddmmyy = `${day}${month}${year}`
 
-    const startOfDayStr = `${yearFull}-${month}-${day}T00:00:00+07:00`
 
     const { data: latestOrders, error: latestError } = await supabase
       .from('orders')
       .select('order_number')
-      .gte('created_at', startOfDayStr)
       .like('order_number', `OR-${ddmmyy}-%`)
-      .order('created_at', { ascending: false })
+      .order('order_number', { ascending: false })
       .limit(1)
 
     if (latestError) throw latestError
