@@ -265,14 +265,13 @@ function OrderPage() {
   }
 
   const handleMarkAsPaid = async (order: Order) => {
-    if (window.confirm(`ยืนยันการชำระเงินสำหรับออเดอร์ ${order.id} ใช่หรือไม่?`)) {
-      const result = await markOrderAsPaid(order.id)
-      if (result.success) {
-        showToast('อัปเดตสถานะเป็นชำระแล้ว!', 'success')
-        await loadData()
-      } else {
-        showToast(result.error || 'เกิดข้อผิดพลาด')
-      }
+    const result = await markOrderAsPaid(order.id)
+    if (result.success) {
+      const orderIdDisplay = order.order_number || order.id.split('-')[0]
+      showToast(`ยืนยันการชำระเงิน สำหรับออเดอร์ ${orderIdDisplay}`, 'success')
+      await loadData()
+    } else {
+      showToast(result.error || 'เกิดข้อผิดพลาด')
     }
   }
 
@@ -867,7 +866,7 @@ function OrderPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
             {/* Header */}
             <div className="bg-[#e70029] p-5 flex justify-between items-center text-white">
-              <h3 className="text-2xl font-bold">ยกเลิกคำสั่งซื้อ {cancelOrderObj.id}</h3>
+              <h3 className="text-2xl font-bold">ยกเลิกคำสั่งซื้อ {cancelOrderObj.order_number || cancelOrderObj.id.split('-')[0]}</h3>
               <button 
                 onClick={() => setCancelOrderObj(null)}
                 className="text-white/80 hover:text-white bg-black/10 hover:bg-black/20 rounded-full p-1.5 transition-colors"
