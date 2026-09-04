@@ -314,10 +314,10 @@ function OrderPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[65%_1fr] gap-6 xl:gap-8 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[65%_1fr] gap-6 xl:gap-8 items-stretch">
             
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
-              <div className="flex justify-between items-end mb-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8 flex flex-col h-full relative">
+              <div className="flex justify-between items-end mb-6 shrink-0">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Order history</h2>
                 </div>
@@ -326,9 +326,10 @@ function OrderPage() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-150">
-                  <thead>
+              <div className="flex-1 relative">
+                <div className="absolute inset-0 overflow-x-auto overflow-y-auto rounded-lg">
+                  <table className="w-full text-left border-collapse min-w-150">
+                  <thead className="sticky top-0 bg-white z-10">
                     <tr className="border-b-2 border-gray-100">
                       <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider">Order</th>
                       <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider">Channel</th>
@@ -397,6 +398,7 @@ function OrderPage() {
                 </table>
               </div>
             </div>
+          </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8 relative overflow-hidden">
               

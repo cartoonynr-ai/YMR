@@ -56,7 +56,7 @@ function Inventory() {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
+  const itemsPerPage = 9
 
   // Modals States
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
@@ -189,12 +189,15 @@ function Inventory() {
     }
 
     if (activeTab === 'categories') {
-      if (!term) return categories
-      return categories.filter(
-        (c) =>
-          c.name.toLowerCase().includes(term) ||
-          c.thaiName.toLowerCase().includes(term)
-      )
+      let result = categories
+      if (term) {
+        result = result.filter(
+          (c) =>
+            c.name.toLowerCase().includes(term) ||
+            c.thaiName.toLowerCase().includes(term)
+        )
+      }
+      return [...result].sort((a, b) => a.name.localeCompare(b.name, 'en'))
     }
 
     return []
