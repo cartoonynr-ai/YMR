@@ -418,7 +418,16 @@ function OrderPage() {
                     {['LINE', 'Facebook', 'POS'].map(ch => (
                       <button
                         key={ch}
-                        onClick={() => setChannel(ch)}
+                        onClick={() => {
+                          setChannel(ch)
+                          if (ch === 'POS') {
+                            if (payment === 'CASH ON DELIVERY') setPayment('CASH')
+                            setIsPaid(true)
+                          } else if (ch !== 'POS' && payment === 'CASH') {
+                            setPayment('CASH ON DELIVERY')
+                            setIsPaid(false)
+                          }
+                        }}
                         className={`flex-1 text-[11px] font-bold py-2.5 rounded-lg transition-all ${channel === ch ? 'text-[#00b6d5] bg-[#e6f8fb] border border-[#66d4e6] shadow-sm' : 'text-gray-500 hover:text-gray-700 border border-transparent'}`}
                       >
                         {ch}
@@ -610,7 +619,8 @@ function OrderPage() {
                             value={item.qty}
                             onChange={e => handleUpdateRow(item.id, 'qty', e.target.value)}
                             min="1" 
-                            className="w-14 bg-white border border-gray-200 rounded-lg px-2 py-2 text-xs font-medium text-center focus:ring-1 focus:ring-gray-900 outline-none" 
+                            disabled={!item.sku}
+                            className={`w-14 border border-gray-200 rounded-lg px-2 py-2 text-xs font-medium text-center focus:ring-1 focus:ring-gray-900 outline-none ${!item.sku ? 'bg-gray-100 opacity-50 cursor-not-allowed text-gray-400' : 'bg-white'}`} 
                           />
                           <button type="button" onClick={() => handleRemoveRow(item.id)} className="text-gray-400 hover:text-rose-500 p-1 shrink-0">
                             <X className="w-4 h-4" />
@@ -636,12 +646,13 @@ function OrderPage() {
                     </label>
                     
                     <div className="flex p-1 bg-gray-800 rounded-xl mb-5">
-                      {['BANK TRANSFER', 'CASH ON DELIVERY'].map(method => (
+                      {(channel === 'POS' ? ['BANK TRANSFER', 'CASH'] : ['BANK TRANSFER', 'CASH ON DELIVERY']).map(method => (
                         <button
                           key={method}
                           onClick={() => {
                             setPayment(method)
                             if (method === 'CASH ON DELIVERY') setIsPaid(false)
+                            if (channel === 'POS' && method === 'CASH') setIsPaid(true)
                           }}
                           className={`flex-1 text-[11px] font-bold py-2.5 rounded-lg transition-all ${payment === method ? 'text-[#00b6d5] bg-[#e6f8fb] border border-[#66d4e6] shadow-md' : 'text-gray-400 hover:text-white border border-transparent'}`}
                         >
@@ -651,18 +662,18 @@ function OrderPage() {
                     </div>
 
                     <div className="flex flex-col gap-3 mb-6">
-                      <label className={`flex items-center gap-3 group/check ${payment === 'CASH ON DELIVERY' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                      <label className={`flex items-center gap-3 group/check ${payment === 'CASH ON DELIVERY' || (channel === 'POS' && payment === 'CASH') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                         <div className="relative flex items-center justify-center">
                           <input 
                             type="checkbox" 
                             className="peer appearance-none w-5 h-5 rounded-md border-2 border-gray-600 bg-gray-800 focus:outline-none transition-colors" 
                             checked={isPaid === true}
                             onChange={() => {
-                              if (payment !== 'CASH ON DELIVERY') {
+                              if (payment !== 'CASH ON DELIVERY' && !(channel === 'POS' && payment === 'CASH')) {
                                 setIsPaid(true)
                               }
                             }}
-                            disabled={payment === 'CASH ON DELIVERY'}
+                            disabled={payment === 'CASH ON DELIVERY' || (channel === 'POS' && payment === 'CASH')}
                           />
                           <div className={`absolute text-white pointer-events-none transition-opacity ${isPaid ? 'opacity-100' : 'opacity-0'}`}>
                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
@@ -671,7 +682,7 @@ function OrderPage() {
                           </div>
                         </div>
                         <div className="flex flex-col">
-                          <span className={`text-[11px] font-medium transition-colors ${payment === 'CASH ON DELIVERY' ? 'text-gray-400' : 'text-gray-300 group-hover/check:text-white'}`}>
+                          <span className={`text-[11px] font-medium transition-colors ${payment === 'CASH ON DELIVERY' || (channel === 'POS' && payment === 'CASH') ? 'text-gray-400' : 'text-gray-300 group-hover/check:text-white'}`}>
                             Paid (ชำระแล้ว)
                           </span>
                           {payment === 'CASH ON DELIVERY' && (
@@ -679,27 +690,34 @@ function OrderPage() {
                               * Not applicable for COD
                             </span>
                           )}
+                          {(channel === 'POS' && payment === 'CASH') && (
+                            <span className="text-[9px] text-emerald-400 mt-0.5">
+                              * Auto-paid for POS Cash
+                            </span>
+                          )}
                         </div>
                       </label>
 
-                      <label className="flex items-center gap-3 cursor-pointer group/check">
-                        <div className="relative flex items-center justify-center">
-                          <input 
-                            type="checkbox" 
-                            className="peer appearance-none w-5 h-5 rounded-md border-2 border-gray-600 bg-gray-800 focus:outline-none transition-colors" 
-                            checked={isPaid === false}
-                            onChange={() => setIsPaid(false)}
-                          />
-                          <div className={`absolute text-white pointer-events-none transition-opacity ${!isPaid ? 'opacity-100' : 'opacity-0'}`}>
-                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
+                      {!(channel === 'POS' && payment === 'CASH') && (
+                        <label className="flex items-center gap-3 cursor-pointer group/check">
+                          <div className="relative flex items-center justify-center">
+                            <input 
+                              type="checkbox" 
+                              className="peer appearance-none w-5 h-5 rounded-md border-2 border-gray-600 bg-gray-800 focus:outline-none transition-colors" 
+                              checked={isPaid === false}
+                              onChange={() => setIsPaid(false)}
+                            />
+                            <div className={`absolute text-white pointer-events-none transition-opacity ${!isPaid ? 'opacity-100' : 'opacity-0'}`}>
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            </div>
                           </div>
-                        </div>
-                        <span className="text-[11px] font-medium text-gray-300 group-hover/check:text-white transition-colors">
-                          Awaiting payment (รอการชำระเงิน)
-                        </span>
-                      </label>
+                          <span className="text-[11px] font-medium text-gray-300 group-hover/check:text-white transition-colors">
+                            Awaiting payment (รอการชำระเงิน)
+                          </span>
+                        </label>
+                      )}
                     </div>
 
                     <button 

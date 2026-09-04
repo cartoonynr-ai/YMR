@@ -86,16 +86,16 @@ function SaleHistoryPage() {
               </div>
             </div>
             
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-auto max-h-[560px] rounded-lg scrollbar-thin scrollbar-thumb-gray-200">
               <table className="w-full text-left border-collapse min-w-150">
-                <thead>
-                  <tr className="border-b-2 border-gray-100">
-                    <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider">Receipt</th>
-                    <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider">Timestamp</th>
-                    <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider text-center">Items</th>
-                    <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider text-center">Payment</th>
-                    <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider">Cashier</th>
-                    <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider text-right">Total</th>
+                <thead className="sticky top-0 bg-white z-10 before:content-[''] before:absolute before:inset-x-0 before:bottom-0 before:border-b-2 before:border-gray-100">
+                  <tr>
+                    <th className="pb-4 pt-4 px-4 text-xs font-black text-gray-400 uppercase tracking-wider bg-white">Receipt</th>
+                    <th className="pb-4 pt-4 px-4 text-xs font-black text-gray-400 uppercase tracking-wider bg-white">Timestamp</th>
+                    <th className="pb-4 pt-4 px-4 text-xs font-black text-gray-400 uppercase tracking-wider text-center bg-white">Items</th>
+                    <th className="pb-4 pt-4 px-4 text-xs font-black text-gray-400 uppercase tracking-wider text-center bg-white">Payment</th>
+                    <th className="pb-4 pt-4 px-4 text-xs font-black text-gray-400 uppercase tracking-wider bg-white">Cashier</th>
+                    <th className="pb-4 pt-4 px-4 text-xs font-black text-gray-400 uppercase tracking-wider text-right bg-white">Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">

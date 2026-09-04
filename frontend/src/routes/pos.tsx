@@ -95,6 +95,22 @@ function PosPage() {
     }))
   }
 
+  const setExactQty = (id: string, val: string) => {
+    setItems(items.map(item => {
+      if (item.id === id) {
+        let newQty = parseInt(val)
+        if (isNaN(newQty)) newQty = 1
+        if (newQty < 1) newQty = 1
+        if (newQty > item.stock) {
+          showToast('จำนวนสินค้าเกินสต็อกที่มี', 'error')
+          newQty = item.stock
+        }
+        return { ...item, qty: newQty }
+      }
+      return item
+    }))
+  }
+
   const removeItem = (id: string) => {
     setItems(items.filter(item => item.id !== id));
   }
@@ -353,14 +369,21 @@ function PosPage() {
                         ฿{item.price.toLocaleString()}
                       </td>
                       <td className="py-4 px-6 md:px-8">
-                        <div className="flex items-center justify-center gap-3">
+                        <div className="flex items-center justify-center gap-2">
                           <button 
                             onClick={() => updateQty(item.id, -1)}
                             className="w-7 h-7 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors border border-transparent"
                           >
                             <Minus size={14} />
                           </button>
-                          <span className="w-8 text-center font-bold text-gray-900">{item.qty}</span>
+                          <input 
+                            type="number"
+                            value={item.qty}
+                            onChange={(e) => setExactQty(item.id, e.target.value)}
+                            min="1"
+                            max={item.stock}
+                            className="w-12 bg-transparent border-0 px-1 py-1 text-sm font-bold text-center text-gray-900 hover:bg-gray-50 focus:bg-white rounded-lg focus:ring-1 focus:ring-gray-200 outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                          />
                           <button 
                             onClick={() => updateQty(item.id, 1)}
                             disabled={item.qty >= item.stock}
