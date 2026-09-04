@@ -28,7 +28,16 @@ import {
   type StockMovement,
 } from '../services/inventory'
 
+type InventorySearch = {
+  tab?: 'all' | 'low' | 'history' | 'categories'
+}
+
 export const Route = createFileRoute('/inventory')({
+  validateSearch: (search: Record<string, unknown>): InventorySearch => {
+    return {
+      tab: (search.tab as 'all' | 'low' | 'history' | 'categories') || undefined,
+    }
+  },
   beforeLoad: ({ context }) => {
     if (!context.auth.isAuthenticated) {
       throw redirect({ to: '/' })
@@ -43,8 +52,10 @@ export const Route = createFileRoute('/inventory')({
 type TabType = 'all' | 'low' | 'history' | 'categories'
 
 function Inventory() {
+  const search = Route.useSearch()
+  
   // Tab State
-  const [activeTab, setActiveTab] = useState<TabType>('all')
+  const [activeTab, setActiveTab] = useState<TabType>(search.tab || 'all')
 
   // Data States
   const [products, setProducts] = useState<Product[]>([])

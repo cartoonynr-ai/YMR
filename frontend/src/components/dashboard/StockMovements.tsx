@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from '@tanstack/react-router'
 import { getMovements, type StockMovement } from '../../services/inventory'
 
 export default function StockMovements() {
@@ -15,8 +16,15 @@ export default function StockMovements() {
   return (
     <div className="bg-[#0f172b] rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
       {/* Panel Header */}
-      <div className="px-6 py-4 border-b border-gray-800">
+      <div className="px-6 py-4 border-b border-gray-800 flex justify-between items-center">
         <h2 className="font-semibold text-[#00b6d5]">Latest stock movements</h2>
+        <Link 
+          to="/inventory" 
+          search={{ tab: 'history' }} 
+          className="text-xs font-medium text-gray-400 hover:text-[#00b6d5] transition-colors"
+        >
+          View all
+        </Link>
       </div>
 
       {/* Movement List */}
