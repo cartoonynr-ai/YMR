@@ -61,8 +61,8 @@ export const getOrders = async (): Promise<Order[]> => {
       status: o.status,
       paymentMethod: o.payment_method || undefined,
       cancelReason: o.cancel_reason || undefined,
-      date: new Date(o.created_at).toLocaleString('th-TH'),
-      paidDate: o.paid_at ? new Date(o.paid_at).toLocaleString('th-TH') : undefined,
+      date: new Date(o.created_at).toLocaleString('th-TH', { calendar: 'gregory' }),
+      paidDate: o.paid_at ? new Date(o.paid_at).toLocaleString('th-TH', { calendar: 'gregory' }) : undefined,
       items: o.order_items.map((i: any) => ({
         id: i.id,
         qty: i.qty,

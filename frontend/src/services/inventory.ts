@@ -90,7 +90,7 @@ export const getMovements = async (): Promise<StockMovement[]> => {
   if (error) throw error
   return data.map(m => ({
     id: m.id,
-    timestamp: new Date(m.created_at || '').toLocaleString('th-TH'),
+    timestamp: new Date(m.created_at || '').toLocaleString('th-TH', { calendar: 'gregory' }),
     sku: (m.products as any)?.sku || 'Unknown',
     productName: (m.products as any)?.name || 'Unknown',
     change: m.change,
