@@ -12,6 +12,7 @@ import {
   X,
   FolderPlus,
   Layers,
+  ChevronDown,
 } from 'lucide-react'
 import {
   getProducts,
@@ -819,14 +820,17 @@ function Inventory() {
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
                       Brand
                     </label>
-                    <input
-                      type="text"
-                      list="brand-options"
-                      placeholder="Enter Brand หรือพิมพ์ใหม่"
-                      value={productForm.brand || ''}
-                      onChange={(e) => setProductForm((f) => ({ ...f, brand: e.target.value }))}
-                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        list="brand-options"
+                        placeholder="Enter Brand หรือพิมพ์ใหม่"
+                        value={productForm.brand || ''}
+                        onChange={(e) => setProductForm((f) => ({ ...f, brand: e.target.value }))}
+                        className="w-full px-3.5 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-8 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer relative z-10 bg-transparent"
+                      />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-0" />
+                    </div>
                     <datalist id="brand-options">
                       {Array.from(new Set(products.map(p => p.brand).filter(Boolean))).sort().map(brand => (
                         <option key={brand} value={brand} />
@@ -839,14 +843,17 @@ function Inventory() {
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
                       Compatibility
                     </label>
-                    <input
-                      type="text"
-                      list="compat-options"
-                      placeholder="Enter Compatibility หรือพิมพ์ใหม่"
-                      value={productForm.compatibility || ''}
-                      onChange={(e) => setProductForm((f) => ({ ...f, compatibility: e.target.value }))}
-                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        list="compat-options"
+                        placeholder="Enter Compatibility หรือพิมพ์ใหม่"
+                        value={productForm.compatibility || ''}
+                        onChange={(e) => setProductForm((f) => ({ ...f, compatibility: e.target.value }))}
+                        className="w-full px-3.5 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-8 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer relative z-10 bg-transparent"
+                      />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-0" />
+                    </div>
                     <datalist id="compat-options">
                       {Array.from(new Set(products.map(p => p.compatibility).filter(Boolean))).sort().map(compat => (
                         <option key={compat} value={compat} />
@@ -861,17 +868,20 @@ function Inventory() {
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
                       Category
                     </label>
-                    <select
-                      value={productForm.category || ''}
-                      onChange={(e) => setProductForm((f) => ({ ...f, category: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm bg-white"
-                    >
-                      {categories.map((c) => (
-                        <option key={c.name} value={c.name}>
-                          {c.name} ({c.thaiName})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={productForm.category || ''}
+                        onChange={(e) => setProductForm((f) => ({ ...f, category: e.target.value }))}
+                        className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none text-sm bg-white appearance-none relative z-10 bg-transparent"
+                      >
+                        {categories.map((c) => (
+                          <option key={c.name} value={c.name}>
+                            {c.name} ({c.thaiName})
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-0" />
+                    </div>
                   </div>
 
                   {/* Price */}
