@@ -13,9 +13,7 @@ export default function KpiCards() {
       // 1. Total Sales (Paid only)
       const totalSales = orders.filter(o => o.status === 'Paid').reduce((sum, o) => sum + o.total, 0)
       
-      // 2. Orders vs Cancelled
-      const totalOrders = orders.length
-      const cancelledOrders = orders.filter(o => o.status === 'Cancelled').length
+      // 2. (Removed total orders)
       
       // 3. Channel breakdown
       const lineOrders = orders.filter(o => o.channel === 'LINE').length
@@ -34,10 +32,10 @@ export default function KpiCards() {
           note: '+15% from last week',
         },
         {
-          id: 'total-orders',
-          title: 'Total Orders',
-          value: totalOrders.toString(),
-          note: `${cancelledOrders} cancelled`,
+          id: 'total-products',
+          title: 'Total Products',
+          value: products.length.toString(),
+          note: `${products.reduce((sum, p) => sum + p.qty, 0).toLocaleString()} items in stock`,
         },
         {
           id: 'orders-by-channel',
