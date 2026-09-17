@@ -136,7 +136,7 @@ function NewOrderPage() {
         <header className="flex justify-between items-center mb-6 shrink-0">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Receive Stock</h1>
-            <p className="text-sm text-gray-500 mt-1">เพิ่มสต็อกสินค้าจากการสั่งซื้อ</p>
+            <p className="text-sm text-gray-500 mt-1">คำสั่งให้ระบบเพิ่มสินค้าเข้า</p>
           </div>
         </header>
 
