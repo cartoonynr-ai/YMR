@@ -286,9 +286,24 @@ function NewOrderPage() {
                         <div className="text-xs text-gray-500 font-medium mt-0.5">SKU: {product.sku}</div>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className={`font-semibold ${product.qty === 0 ? 'text-rose-600' : product.qty <= product.threshold ? 'text-amber-600' : 'text-gray-900'}`}>
-                          {product.qty}
-                        </span>
+                        <div className="flex flex-col items-center">
+                          <span className={`font-semibold text-base ${product.qty === 0 ? 'text-rose-600' : product.qty <= product.threshold ? 'text-amber-600' : 'text-gray-900'}`}>
+                            {product.qty}
+                          </span>
+                          {product.qty === 0 ? (
+                            <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full uppercase">
+                              Out of stock
+                            </span>
+                          ) : product.qty <= product.threshold ? (
+                            <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full uppercase">
+                              Low Stock
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full uppercase">
+                              In Stock
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 font-medium text-gray-900">
                         ฿{product.price.toLocaleString()}
