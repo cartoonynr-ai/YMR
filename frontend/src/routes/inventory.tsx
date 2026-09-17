@@ -375,7 +375,7 @@ function Inventory() {
     <AppLayout>
       {/* Toast Alert */}
       {alert && (
-        <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium transition-all ${
+        <div className={`fixed top-5 right-5 z-[9999] px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium transition-all ${
           alert.type === 'success' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'
         }`}>
           <span>{alert.message}</span>
