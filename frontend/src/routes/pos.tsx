@@ -12,9 +12,7 @@ export const Route = createFileRoute('/pos')({
     if (!context.auth.isAuthenticated) {
       throw redirect({ to: '/' })
     }
-    if (context.auth.user?.role?.toLowerCase() === 'admin') {
-      throw redirect({ to: '/dashboard' })
-    }
+    // Allow both Admin and Staff to access POS
   },
   component: PosPage,
 })
