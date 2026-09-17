@@ -826,9 +826,9 @@ function Inventory() {
                         list="brand-options"
                         value={productForm.brand || ''}
                         onChange={(e) => setProductForm((f) => ({ ...f, brand: e.target.value }))}
-                        className="w-full px-3.5 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-8 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer relative z-10 bg-transparent"
+                        className="w-full px-3.5 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-white focus:ring-2 focus:ring-primary/20 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-8 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                       />
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-0" />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-10" />
                     </div>
                     <datalist id="brand-options">
                       {Array.from(new Set(products.map(p => p.brand).filter(Boolean))).sort().map(brand => (
@@ -848,9 +848,9 @@ function Inventory() {
                         list="compat-options"
                         value={productForm.compatibility || ''}
                         onChange={(e) => setProductForm((f) => ({ ...f, compatibility: e.target.value }))}
-                        className="w-full px-3.5 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-8 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer relative z-10 bg-transparent"
+                        className="w-full px-3.5 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-white focus:ring-2 focus:ring-primary/20 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-8 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                       />
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-0" />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-10" />
                     </div>
                     <datalist id="compat-options">
                       {Array.from(new Set(products.map(p => p.compatibility).filter(Boolean))).sort().map(compat => (
@@ -870,7 +870,7 @@ function Inventory() {
                       <select
                         value={productForm.category || ''}
                         onChange={(e) => setProductForm((f) => ({ ...f, category: e.target.value }))}
-                        className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none text-sm bg-white appearance-none relative z-10 bg-transparent"
+                        className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none text-sm bg-white appearance-none focus:ring-2 focus:ring-primary/20"
                       >
                         {categories.map((c) => (
                           <option key={c.name} value={c.name}>
@@ -878,7 +878,7 @@ function Inventory() {
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-0" />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-10" />
                     </div>
                   </div>
 
