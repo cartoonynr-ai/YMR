@@ -13,6 +13,7 @@ export interface Product {
   qty: number
   threshold: number
   image_url?: string
+  reference_doc?: string
 }
 
 export interface Category {
@@ -30,6 +31,7 @@ export interface StockMovement {
   balance: number
   reason: string
   by: string
+  reference_doc?: string
 }
 
 export const getCategories = async (): Promise<Category[]> => {
@@ -95,6 +97,7 @@ export const getMovements = async (): Promise<StockMovement[]> => {
     balance: m.balance,
     reason: m.reason,
     by: (m.users as any)?.full_name || (m.users as any)?.email || 'Unknown',
+    reference_doc: m.reference_doc || '',
   }))
 }
 
@@ -160,7 +163,8 @@ export const addProduct = async (product: Product): Promise<{ success: boolean; 
       change: product.qty,
       balance: product.qty,
       reason: 'สินค้าเข้าคลังใหม่ (สร้างสินค้า)',
-      created_by: userId
+      created_by: userId,
+      reference_doc: product.reference_doc
     })
   }
   return { success: true }
@@ -197,7 +201,17 @@ export const updateProduct = async (oldSku: string, product: Product): Promise<{
       change: qtyDiff,
       balance: product.qty,
       reason: qtyDiff > 0 ? 'แก้ไขจำนวนสต็อก (ปรับเพิ่ม)' : 'แก้ไขจำนวนสต็อก (ปรับลด)',
-      created_by: userId
+      created_by: userId,
+      reference_doc: product.reference_doc
+    })
+  } else if (oldProd.price !== product.price) {
+    await supabase.from('stock_movements').insert({
+      product_id: oldProd.id,
+      change: 0,
+      balance: product.qty,
+      reason: `แก้ไขราคาสินค้า (จาก ฿${oldProd.price} เป็น ฿${product.price})`,
+      created_by: userId,
+      reference_doc: product.reference_doc
     })
   } else if (oldProd.name !== product.name) {
     await supabase.from('stock_movements').insert({
@@ -205,7 +219,8 @@ export const updateProduct = async (oldSku: string, product: Product): Promise<{
       change: 0,
       balance: product.qty,
       reason: 'แก้ไขรายละเอียดสินค้า',
-      created_by: userId
+      created_by: userId,
+      reference_doc: product.reference_doc
     })
   }
 

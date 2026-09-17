@@ -97,6 +97,7 @@ function Inventory() {
     price: 0,
     qty: 0,
     threshold: 0,
+    reference_doc: '',
   })
 
   const [categoryForm, setCategoryForm] = useState<Partial<Category>>({
@@ -580,6 +581,7 @@ function Inventory() {
                       <th className="px-6 py-3.5 text-center">Change</th>
                       <th className="px-6 py-3.5 text-center">Balance</th>
                       <th className="px-6 py-3.5">Reason</th>
+                      <th className="px-6 py-3.5">Ref / PO</th>
                       <th className="px-6 py-3.5">By</th>
                     </tr>
                   </thead>
@@ -609,6 +611,9 @@ function Inventory() {
                         </td>
                         <td className="px-6 py-4 text-gray-600 max-w-xs truncate">
                           {move.reason}
+                        </td>
+                        <td className="px-6 py-4 text-gray-500 max-w-xs truncate">
+                          {move.reference_doc || '-'}
                         </td>
                         <td className="px-6 py-4 text-gray-500 whitespace-nowrap">
                           {move.by}
@@ -905,6 +910,20 @@ function Inventory() {
                       className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
                     />
                   </div>
+                </div>
+
+                {/* Reference Doc (Optional) */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
+                    Reference Document / PO (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. PO-2023-001, Invoice #1234"
+                    value={productForm.reference_doc || ''}
+                    onChange={(e) => setProductForm((f) => ({ ...f, reference_doc: e.target.value }))}
+                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
+                  />
                 </div>
               </div>
 
