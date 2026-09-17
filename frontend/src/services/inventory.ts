@@ -158,7 +158,7 @@ export const addProduct = async (product: Product): Promise<{ success: boolean; 
   if (error) return { success: false, error: error.message }
 
   if (product.qty > 0) {
-    await supabase.from('stock_movements').insert({
+    const { error: moveError } = await supabase.from('stock_movements').insert({
       product_id: newProd.id,
       change: product.qty,
       balance: product.qty,
@@ -166,6 +166,7 @@ export const addProduct = async (product: Product): Promise<{ success: boolean; 
       created_by: userId,
       reference_doc: product.reference_doc
     })
+    if (moveError) return { success: false, error: moveError.message }
   }
   return { success: true }
 }
@@ -196,7 +197,7 @@ export const updateProduct = async (oldSku: string, product: Product): Promise<{
   if (error) return { success: false, error: error.message }
 
   if (qtyDiff !== 0) {
-    await supabase.from('stock_movements').insert({
+    const { error: moveError } = await supabase.from('stock_movements').insert({
       product_id: oldProd.id,
       change: qtyDiff,
       balance: product.qty,
@@ -204,8 +205,9 @@ export const updateProduct = async (oldSku: string, product: Product): Promise<{
       created_by: userId,
       reference_doc: product.reference_doc
     })
+    if (moveError) return { success: false, error: moveError.message }
   } else if (oldProd.price !== product.price) {
-    await supabase.from('stock_movements').insert({
+    const { error: moveError } = await supabase.from('stock_movements').insert({
       product_id: oldProd.id,
       change: 0,
       balance: product.qty,
@@ -213,8 +215,9 @@ export const updateProduct = async (oldSku: string, product: Product): Promise<{
       created_by: userId,
       reference_doc: product.reference_doc
     })
+    if (moveError) return { success: false, error: moveError.message }
   } else if (oldProd.name !== product.name) {
-    await supabase.from('stock_movements').insert({
+    const { error: moveError } = await supabase.from('stock_movements').insert({
       product_id: oldProd.id,
       change: 0,
       balance: product.qty,
@@ -222,6 +225,7 @@ export const updateProduct = async (oldSku: string, product: Product): Promise<{
       created_by: userId,
       reference_doc: product.reference_doc
     })
+    if (moveError) return { success: false, error: moveError.message }
   }
 
   return { success: true }
