@@ -214,9 +214,15 @@ function NewOrderPage() {
 
             {/* Action Buttons */}
             <div className="p-5 border-t border-gray-100 bg-gray-50/50 mt-auto shrink-0">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium text-gray-500">รวมรายการทั้งหมด:</span>
-                <span className="text-lg font-black text-gray-900">{cart.length} รายการ</span>
+                <span className="text-base font-bold text-gray-900">{cart.length} รายการ</span>
+              </div>
+              <div className="flex justify-between items-center mb-5">
+                <span className="text-sm font-medium text-gray-500">ยอดรวมการสั่งซื้อ:</span>
+                <span className="text-2xl font-black text-primary">
+                  ฿{cart.reduce((sum, item) => sum + (item.product.price * item.addQty), 0).toLocaleString()}
+                </span>
               </div>
               <div className="flex gap-3">
                 <button
