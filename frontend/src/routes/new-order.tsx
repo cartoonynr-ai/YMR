@@ -2,19 +2,15 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import AppLayout from '../components/layout/AppLayout'
 import { 
-  Type,
-  X,
-  ChevronDown,
-  MapPin,
+  Search,
   Package,
-  CreditCard,
-  Eye,
-  CheckCircle,
-  Ban
+  Plus,
+  AlertCircle,
+  CheckCircle2,
+  FileText,
+  X
 } from 'lucide-react'
-import { getProducts, type Product } from '../services/inventory'
-import { searchAddressByZipcode } from 'thai-address-database'
-import { getOrders, createOrder, cancelOrder, markOrderAsPaid, type Order } from '../services/orders'
+import { getProducts, updateProduct, type Product } from '../services/inventory'
 
 export const Route = createFileRoute('/new-order')({
   beforeLoad: ({ context }) => {
@@ -29,917 +25,292 @@ export const Route = createFileRoute('/new-order')({
 })
 
 function NewOrderPage() {
-  const [orders, setOrders] = useState<Order[]>([])
   const [products, setProducts] = useState<Product[]>([])
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
-  const [cancelOrderObj, setCancelOrderObj] = useState<Order | null>(null)
-  const [cancelReasonStr, setCancelReasonStr] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [cart, setCart] = useState<{ product: Product; addQty: number }[]>([])
+  const [referenceDoc, setReferenceDoc] = useState('')
   
-  // Form State
-  const [channel, setChannel] = useState('LINE')
-  const [payment, setPayment] = useState('BANK TRANSFER')
-  const [isPaid, setIsPaid] = useState(false)
-  const [customerName, setCustomerName] = useState('')
-  const [customerPhone, setCustomerPhone] = useState('')
-  
-  // Address State
-  interface AddressData {
-    id: number;
-    houseNumber: string;
-    street: string;
-    subDistrict: string;
-    district: string;
-    province: string;
-    zipcode: string;
-  }
-  const [addresses, setAddresses] = useState<AddressData[]>([{
-    id: 1, houseNumber: '', street: '', subDistrict: '', district: '', province: '', zipcode: ''
-  }])
-  const [selectedAddressId, setSelectedAddressId] = useState<number>(1)
-  const [addressSuggestions, setAddressSuggestions] = useState<{[id: number]: any[]}>({})
+  const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleZipcodeChange = (id: number, val: string) => {
-    updateAddress(id, 'zipcode', val);
-    const zip = val.replace(/\D/g, '').slice(0, 5);
-    
-    if (zip.length === 5) {
-      const results = searchAddressByZipcode(zip);
-      if (results.length === 1) {
-        updateAddress(id, 'subDistrict', results[0].district);
-        updateAddress(id, 'district', results[0].amphoe);
-        updateAddress(id, 'province', results[0].province);
-        setAddressSuggestions(prev => ({ ...prev, [id]: [] }));
-      } else if (results.length > 1) {
-        setAddressSuggestions(prev => ({ ...prev, [id]: results }));
-      } else {
-        setAddressSuggestions(prev => ({ ...prev, [id]: [] }));
-      }
-    } else {
-      setAddressSuggestions(prev => ({ ...prev, [id]: [] }));
-      updateAddress(id, 'subDistrict', '');
-      updateAddress(id, 'district', '');
-      updateAddress(id, 'province', '');
-    }
+  const showToast = (message: string, type: 'success' | 'error' = 'error') => {
+    setAlert({ message, type })
+    setTimeout(() => setAlert(null), 3000)
   }
 
-  const selectSuggestion = (id: number, suggestion: any) => {
-    updateAddress(id, 'subDistrict', suggestion.district);
-    updateAddress(id, 'district', suggestion.amphoe);
-    updateAddress(id, 'province', suggestion.province);
-    updateAddress(id, 'zipcode', String(suggestion.zipcode));
-    setAddressSuggestions(prev => ({ ...prev, [id]: [] }));
-  }
-
-  const handleAddAddress = () => {
-    const newId = addresses.length > 0 ? Math.max(...addresses.map(a => a.id)) + 1 : 1
-    setAddresses([...addresses, { id: newId, houseNumber: '', street: '', subDistrict: '', district: '', province: '', zipcode: '' }])
-    setSelectedAddressId(newId)
-  }
-
-  const updateAddress = (id: number, field: keyof AddressData, value: string) => {
-    setAddresses(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a))
-  }
-
-  const handleRemoveAddress = (idToRemove: number) => {
-    if (selectedAddressId === idToRemove) {
-      const firstRemaining = addresses.find(a => a.id !== idToRemove);
-      if (firstRemaining) {
-        setSelectedAddressId(firstRemaining.id);
-      }
-    }
-    setAddresses(prev => prev.filter(a => a.id !== idToRemove));
-  }
-
-  const canFillAddress = !!customerName.trim() && /^0\d{8,9}$/.test(customerPhone.replace(/\D/g, ''));
-  const isAllAddressesValid = addresses.every(addr => 
-    addr.houseNumber.trim() !== '' && 
-    addr.street.trim() !== '' && 
-    addr.subDistrict.trim() !== '' && 
-    addr.district.trim() !== '' && 
-    addr.province.trim() !== '' && 
-    addr.zipcode.trim() !== ''
-  );
-  const canAddAddress = canFillAddress && isAllAddressesValid;
-
-  // Items State
-  const createEmptyItem = () => ({ id: Math.random().toString(36).substring(7), sku: '', qty: 1 })
-  const [orderItems, setOrderItems] = useState<{id: string, sku: string, qty: number}[]>([createEmptyItem()])
-  
   const loadData = async () => {
-    setOrders(await getOrders())
-    const invProducts = await getProducts()
-    setProducts(invProducts)
+    try {
+      const prods = await getProducts()
+      setProducts(prods)
+    } catch (err: any) {
+      showToast(err.message || 'Error loading inventory')
+    }
   }
 
   useEffect(() => {
     loadData()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
-  const handleAddRow = () => {
-    setOrderItems(prev => [...prev, createEmptyItem()])
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.sku.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const addToCart = (product: Product) => {
+    const existing = cart.find(item => item.product.sku === product.sku)
+    if (existing) {
+      setCart(cart.map(item => 
+        item.product.sku === product.sku 
+          ? { ...item, addQty: item.addQty + 1 } 
+          : item
+      ))
+    } else {
+      setCart([...cart, { product, addQty: 1 }])
+    }
   }
 
-  const handleRemoveRow = (idToRemove: string) => {
-    setOrderItems(prev => prev.filter(i => i.id !== idToRemove))
+  const updateCartQty = (sku: string, qty: number) => {
+    if (qty < 1) return
+    setCart(cart.map(item => 
+      item.product.sku === sku 
+        ? { ...item, addQty: qty } 
+        : item
+    ))
   }
 
-  const handleUpdateRow = (id: string, field: 'sku' | 'qty', value: any) => {
-    setOrderItems(prev => prev.map(item => {
-      if (item.id !== id) return item;
-      if (field === 'sku') {
-        return { ...item, sku: value, qty: 1 };
-      }
-      if (field === 'qty') {
-        const product = products.find(p => p.sku === item.sku);
-        let validQty = parseInt(value) || 1;
-        if (validQty < 1) validQty = 1;
-        if (product && validQty > product.qty) validQty = product.qty;
-        return { ...item, qty: validQty };
-      }
-      return item;
-    }))
+  const removeFromCart = (sku: string) => {
+    setCart(cart.filter(item => item.product.sku !== sku))
   }
 
-  const calculateTotal = () => {
-    return orderItems.reduce((sum, item) => {
-      const p = products.find(prod => prod.sku === item.sku)
-      return sum + (p ? p.price * item.qty : 0)
-    }, 0)
-  }
-
-  // Toast State
-  const [toastMessage, setToastMessage] = useState('')
-  const [toastType, setToastType] = useState<'error' | 'success'>('error')
-  const [isSaving, setIsSaving] = useState(false)
-
-  const showToast = (msg: string, type: 'error' | 'success' = 'error') => {
-    setToastMessage(msg)
-    setToastType(type)
-    setTimeout(() => setToastMessage(''), 3000)
-  }
-
-  const handleSaveOrder = async () => {
-    if (isSaving) return;
-    setIsSaving(true);
-    try {
-      if (orderItems.length === 0) {
-        showToast('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ')
-        return
-      }
-    if (orderItems.some(item => !item.sku)) {
-      showToast('กรุณาเลือกสินค้าให้ครบทุกรายการ')
+  const handleOrder = async () => {
+    if (cart.length === 0) {
+      showToast('กรุณาเลือกสินค้าที่ต้องการรับเข้าสต็อก', 'error')
       return
     }
+
+    setIsSubmitting(true)
+    let hasError = false
+
+    for (const item of cart) {
+      const updatedProduct = {
+        ...item.product,
+        qty: item.product.qty + item.addQty, // Increase stock
+        reference_doc: referenceDoc.trim() || undefined
+      }
+
+      const res = await updateProduct(
+        item.product.sku, 
+        updatedProduct, 
+        'รับสินค้าเข้าคลัง (เพิ่มสต็อก)'
+      )
+
+      if (!res.success) {
+        hasError = true
+        showToast(`เกิดข้อผิดพลาดในการอัปเดต ${item.product.name}: ${res.error}`, 'error')
+        break // Stop on first error
+      }
+    }
+
+    if (!hasError) {
+      showToast('บันทึกการรับสินค้าเข้าสต็อกเรียบร้อยแล้ว!', 'success')
+      setCart([])
+      setReferenceDoc('')
+      loadData() // Refresh inventory
+    }
     
-    const selectedAddress = addresses.find(a => a.id === selectedAddressId) || addresses[0]
-    
-    if (channel !== 'POS') {
-      if (!customerName || !customerPhone) {
-        showToast('กรุณากรอกชื่อและเบอร์โทรศัพท์ผู้รับ สำหรับช่องทางออนไลน์')
-        return
-      }
-      if (!/^0\d{8,9}$/.test(customerPhone)) {
-        showToast('เบอร์โทรศัพท์ไม่ถูกต้อง (ต้องขึ้นต้นด้วย 0 และมี 9-10 หลัก)')
-        return
-      }
-      
-      const { houseNumber, street, subDistrict, district, province, zipcode } = selectedAddress
-      if (!houseNumber.trim() || !street.trim() || !subDistrict.trim() || !district.trim() || !province.trim() || !zipcode.trim()) {
-        showToast('กรุณากรอกข้อมูลที่อยู่จัดส่งให้ครบทุกช่อง')
-        return
-      }
-    }
-
-    const fullAddress = JSON.stringify({
-      houseNumber: selectedAddress.houseNumber,
-      street: selectedAddress.street,
-      subDistrict: selectedAddress.subDistrict,
-      district: selectedAddress.district,
-      province: selectedAddress.province,
-      zipcode: selectedAddress.zipcode
-    })
-
-    const items = orderItems.map(item => {
-      const p = products.find(prod => prod.sku === item.sku)!
-      return {
-        sku: item.sku,
-        name: p.name,
-        price: p.price,
-        qty: item.qty
-      }
-    })
-
-    const newOrderData = {
-      channel: channel === 'Facebook' ? 'FB' : channel,
-      customerName: channel === 'POS' ? 'Walk-in' : customerName,
-      customerPhone: channel === 'POS' ? '-' : customerPhone,
-      address: channel === 'POS' ? '-' : fullAddress,
-      items,
-      total: calculateTotal(),
-      status: isPaid ? 'Paid' : 'Awaiting payment',
-      paymentMethod: payment
-    }
-
-    const result = await createOrder(newOrderData)
-    if (result.success) {
-      showToast(`บันทึกคำสั่งซื้อ ${result.orderNumber || result.orderId} เรียบร้อย และตัดสต๊อกสำเร็จ!`, 'success')
-      // reset form
-      setOrderItems([createEmptyItem()])
-      setCustomerName('')
-      setCustomerPhone('')
-      setAddresses([{ id: 1, houseNumber: '', street: '', subDistrict: '', district: '', province: '', zipcode: '' }])
-      setSelectedAddressId(1)
-      await loadData()
-    } else {
-      showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกคำสั่งซื้อ')
-    }
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleCancelOrder = async () => {
-    if (!cancelOrderObj || !cancelReasonStr.trim()) return
-    const result = await cancelOrder(cancelOrderObj.id, cancelReasonStr)
-    if (result.success) {
-      showToast('ยกเลิกคำสั่งซื้อและคืนสต็อกสำเร็จ!', 'success')
-      setCancelOrderObj(null)
-      setCancelReasonStr('')
-      await loadData()
-    } else {
-      showToast(result.error || 'เกิดข้อผิดพลาด')
-    }
-  }
-
-  const handleMarkAsPaid = async (order: Order) => {
-    const result = await markOrderAsPaid(order.id)
-    if (result.success) {
-      const orderIdDisplay = order.order_number || order.id.split('-')[0]
-      showToast(`ยืนยันการชำระเงิน สำหรับออเดอร์ ${orderIdDisplay}`, 'success')
-      await loadData()
-    } else {
-      showToast(result.error || 'เกิดข้อผิดพลาด')
-    }
-  }
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 0 }).format(price)
-  }
-
-  const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'Awaiting payment': return 'text-[#da8018] bg-[#fff3d7] rounded-xl'
-      case 'Paid': return 'text-[#276ed2] bg-[#e7f3ff] rounded-xl'
-      case 'Cancelled': return 'text-[#e70029] bg-[#ffeded] rounded-xl'
-      default: return 'bg-gray-100 text-gray-800 rounded-xl'
-    }
-  }
-  
-  const getChannelColor = (ch: string) => {
-    switch(ch) {
-      case 'LINE': return 'text-[#1f956a] bg-[#e0faec] rounded-xl'
-      case 'FB':
-      case 'Facebook': return 'text-[#276ed2] bg-[#e7f3ff] rounded-xl'
-      case 'POS': return 'text-[#1d295b] bg-[#f1f5f9] rounded-xl'
-      default: return 'bg-gray-500 text-white rounded-xl'
-    }
+    setIsSubmitting(false)
   }
 
   return (
     <AppLayout>
-      {toastMessage && (
-        <div className={`fixed top-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] z-50 flex items-center gap-2 transition-all duration-300 ease-out animate-in fade-in slide-in-from-top-4 ${
-          toastType === 'success' ? 'bg-emerald-500 text-white' : 'bg-gray-900 text-white'
+      {alert && (
+        <div className={`fixed top-5 right-5 z-[9999] px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium transition-all ${
+          alert.type === 'success' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'
         }`}>
-          <span className="font-bold text-sm">{toastMessage}</span>
+          {alert.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <AlertCircle className="w-5 h-5 text-rose-600" />}
+          <span>{alert.message}</span>
         </div>
       )}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Order Records</h1>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[65%_1fr] gap-6 xl:gap-8 items-stretch">
-            
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8 flex flex-col h-full relative">
-              <div className="flex justify-between items-end mb-6 shrink-0">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Order history</h2>
-                </div>
-                <div className="text-sm font-bold text-gray-400 bg-gray-50 px-4 py-2 rounded-full">
-                  {orders.length} records
-                </div>
-              </div>
-
-              <div className="flex-1 relative">
-                <div className="absolute inset-0 overflow-x-auto overflow-y-auto rounded-lg">
-                  <table className="w-full text-left border-collapse min-w-150">
-                  <thead className="sticky top-0 bg-white z-10">
-                    <tr className="border-b-2 border-gray-100">
-                      <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider">Order</th>
-                      <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider">Channel</th>
-                      <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider">Customer</th>
-                      <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider text-right">Total</th>
-                      <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider text-center">Status</th>
-                      <th className="pb-4 pt-2 px-4 text-xs font-black text-gray-400 uppercase tracking-wider text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {orders.map((order) => (
-                      <tr key={order.id} className="group hover:bg-gray-50/50 transition-colors">
-                        <td className="py-4 px-4">
-                          <div className="font-bold text-gray-900">{order.order_number || order.id.split('-')[0]}</div>
-                          <div className="text-[11px] text-gray-500 font-medium mt-1">{order.date}</div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <span className={`text-[10px] font-bold px-2.5 py-1 ${getChannelColor(order.channel)}`}>
-                            {order.channel === 'FB' || order.channel === 'Facebook' ? 'Facebook' : order.channel === 'POS' ? 'POS' : order.channel}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="font-bold text-gray-900">{order.customerName}</div>
-                          <div className="text-[11px] text-gray-500 font-medium mt-1">{order.customerPhone}</div>
-                        </td>
-                        <td className="py-4 px-4 text-right font-black text-gray-900">
-                          {formatPrice(order.total)}
-                        </td>
-                        <td className="py-4 px-4 text-center">
-                          <span className={`text-[11px] font-bold px-3 py-1 ${getStatusColor(order.status)} shadow-sm`}>
-                            {order.status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4 text-center">
-                          <div className="flex justify-center gap-1.5">
-                            <button 
-                              onClick={() => setSelectedOrder(order)}
-                              title="View Order"
-                              className="p-1.5 text-[#00b6d5] hover:text-[#0092ab] hover:bg-[#e6f8fb] rounded-lg transition-colors"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            {order.status === 'Awaiting payment' && (
-                              <button 
-                                onClick={() => handleMarkAsPaid(order)}
-                                title="Mark as Paid"
-                                className="p-1.5 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </button>
-                            )}
-                            {order.status !== 'Cancelled' && (
-                              <button 
-                                onClick={() => setCancelOrderObj(order)}
-                                title="Cancel Order"
-                                className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              >
-                                <Ban className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+      <div className="flex flex-col h-full max-h-[calc(100vh-2rem)]">
+        <header className="flex justify-between items-center mb-6 shrink-0">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Inbound Order (รับของเข้า)</h1>
+            <p className="text-sm text-gray-500 mt-1">เพิ่มสต็อกสินค้าจากการสั่งซื้อ</p>
           </div>
+        </header>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8 relative overflow-hidden">
-              
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 tracking-tight">Record new order</h2>
-              
-              <div className="space-y-8">
-                
-                <section>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Channel</label>
-                  <div className="flex p-1 bg-gray-100 rounded-xl">
-                    {['LINE', 'Facebook', 'POS'].map(ch => (
-                      <button
-                        key={ch}
-                        onClick={() => {
-                          setChannel(ch)
-                          if (ch === 'POS') {
-                            if (payment === 'CASH ON DELIVERY') setPayment('CASH')
-                            setIsPaid(true)
-                          } else if (ch !== 'POS' && payment === 'CASH') {
-                            setPayment('CASH ON DELIVERY')
-                            setIsPaid(false)
-                          }
-                        }}
-                        className={`flex-1 text-[11px] font-bold py-2.5 rounded-lg transition-all ${channel === ch ? 'text-[#00b6d5] bg-[#e6f8fb] border border-[#66d4e6] shadow-sm' : 'text-gray-500 hover:text-gray-700 border border-transparent'}`}
-                      >
-                        {ch}
-                      </button>
-                    ))}
-                  </div>
-                </section>
+        <div className="flex flex-col lg:flex-row gap-6 h-full min-h-0 overflow-hidden">
+          
+          {/* LEFT PANEL: Restock Form */}
+          <div className="w-full lg:w-[450px] shrink-0 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-5 border-b border-gray-100 bg-gray-50/50">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Record new order
+              </h2>
+            </div>
+            
+            <div className="p-5 overflow-y-auto flex-1">
+              {/* Reference Document */}
+              <div className="mb-6">
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                  Reference Document / PO (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={referenceDoc}
+                  onChange={(e) => setReferenceDoc(e.target.value)}
+                  placeholder="เช่น PO-2026-001, ใบส่งของ 1234"
+                  className="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary px-3 py-2.5 outline-none transition-all placeholder:text-gray-300"
+                />
+              </div>
 
-                {channel !== 'POS' && (
-                  <section>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                      <Type className="w-3 h-3" />
-                      Recipient Info
-                    </label>
-                    <div className="space-y-3">
-                      <input 
-                        type="text" 
-                        placeholder="Recipient name" 
-                        value={customerName}
-                        onChange={e => setCustomerName(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-gray-900 px-4 py-3 outline-none transition-all font-medium"
-                      />
-                      <input 
-                        type="tel" 
-                        placeholder="Phone number" 
-                        maxLength={10}
-                        value={customerPhone}
-                        onChange={e => {
-                          const val = e.target.value.replace(/\D/g, '').slice(0, 10)
-                          setCustomerPhone(val)
-                          const digits = val
-                          if (digits.length === 10) {
-                            const pastOrders = orders.filter(o => o.customerPhone === val || o.customerPhone === digits || o.customerPhone.replace(/\D/g, '') === digits)
-                            if (pastOrders.length > 0) {
-                              if (!customerName) {
-                                 const match = pastOrders.find(o => o.customerName && o.customerName !== 'Walk-in' && o.customerName !== 'Walk-in counter');
-                                 if (match) setCustomerName(match.customerName)
-                              }
-                              const foundAddresses: AddressData[] = []
-                              pastOrders.forEach(o => {
-                                if (o.address && o.address !== '-' && o.address.startsWith('{')) {
-                                  try {
-                                    const parsed = JSON.parse(o.address)
-                                    if (!foundAddresses.some(a => a.houseNumber === parsed.houseNumber && a.district === parsed.district)) {
-                                      foundAddresses.push({ ...parsed, id: foundAddresses.length + 1 })
-                                    }
-                                  } catch(err) {}
-                                }
-                              })
-                              if (foundAddresses.length > 0) {
-                                setAddresses(foundAddresses)
-                                setSelectedAddressId(foundAddresses[0].id)
-                              }
-                            }
-                          }
-                        }}
-                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-gray-900 px-4 py-3 outline-none transition-all font-medium"
-                      />
-                    </div>
-                  </section>
-                )}
+              {/* Cart Items */}
+              <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">
+                รายการสินค้าที่จะรับเข้าสต็อก
+              </label>
 
-                {channel !== 'POS' && (
-                  <section>
-                    <div className="flex justify-between items-center mb-3">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                        <MapPin className="w-3 h-3" />
-                        Shipping address ({addresses.length})
-                      </label>
+              {cart.length === 0 ? (
+                <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                  <Package className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">ยังไม่มีสินค้าในรายการ</p>
+                  <p className="text-xs text-gray-400 mt-1">กดปุ่ม "เพิ่ม" จากตารางด้านขวา</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {cart.map((item) => (
+                    <div key={item.product.sku} className="p-3 bg-white border border-gray-100 rounded-xl shadow-sm flex items-start gap-3 relative group">
+                      <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
+                        <Package className="w-5 h-5 text-gray-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold text-gray-900 truncate">{item.product.name}</div>
+                        <div className="text-xs text-gray-500 font-medium mt-0.5">SKU: {item.product.sku}</div>
+                        <div className="text-[10px] text-gray-400 mt-1">สต็อกปัจจุบัน: <span className="font-semibold text-gray-600">{item.product.qty}</span></div>
+                      </div>
+                      <div className="w-20 shrink-0">
+                        <label className="block text-[10px] text-gray-500 mb-1">จำนวนที่รับ</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.addQty}
+                          onChange={(e) => updateCartQty(item.product.sku, parseInt(e.target.value) || 1)}
+                          className="w-full text-center bg-gray-50 border border-gray-200 text-gray-900 text-sm font-semibold rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        />
+                      </div>
                       <button 
-                        type="button" 
-                        onClick={handleAddAddress} 
-                        disabled={!canAddAddress}
-                        className={`text-xs font-bold ${canAddAddress ? 'text-gray-900 hover:underline' : 'text-gray-300 cursor-not-allowed'}`}
+                        onClick={() => removeFromCart(item.product.sku)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-gray-200 text-gray-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-sm cursor-pointer"
+                        title="ลบ"
                       >
-                        +Add address
+                        <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    
-                    <div className={`space-y-4 transition-opacity duration-300 ${!canFillAddress ? 'opacity-40 pointer-events-none' : ''}`}>
-                      {addresses.map((addr, idx) => (
-                        <div key={addr.id} className={`rounded-xl border p-4 space-y-4 transition-colors ${selectedAddressId === addr.id ? 'bg-gray-50 border-blue-200' : 'bg-white border-gray-100 opacity-60 hover:opacity-100'}`}>
-                          <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input 
-                                type="radio" 
-                                name="addressSelection"
-                                checked={selectedAddressId === addr.id} 
-                                onChange={() => setSelectedAddressId(addr.id)}
-                                disabled={!canFillAddress}
-                                className="w-4 h-4 accent-blue-500 cursor-pointer disabled:opacity-50" 
-                              />
-                              <span className="text-sm font-bold text-gray-900">address ({idx + 1})</span>
-                              {selectedAddressId === addr.id && (
-                                <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-sm font-bold">For shipping</span>
-                              )}
-                            </label>
-                            {idx > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveAddress(addr.id)}
-                                disabled={!canFillAddress}
-                                className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:hover:bg-transparent shrink-0"
-                                title="ลบที่อยู่"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                          
-                          <div className="grid grid-cols-3 gap-3 mt-3">
-                            <div className="flex flex-col gap-1 col-span-1">
-                              <label className="text-[10px] font-bold text-gray-500">House number</label>
-                              <input type="text" placeholder="House number" value={addr.houseNumber} onChange={e => updateAddress(addr.id, 'houseNumber', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
-                            </div>
-                            <div className="flex flex-col gap-1 col-span-1">
-                              <label className="text-[10px] font-bold text-gray-500">Street</label>
-                              <input type="text" placeholder="Street" value={addr.street} onChange={e => updateAddress(addr.id, 'street', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
-                            </div>
-                            <div className="relative flex flex-col gap-1 col-span-1">
-                              <label className="text-[10px] font-bold text-gray-500">Postal Code</label>
-                              <input type="text" placeholder="Postal Code" maxLength={5} value={addr.zipcode} onChange={e => handleZipcodeChange(addr.id, e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
-                              
-                              {addressSuggestions[addr.id]?.length > 0 && (
-                                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
-                                  {addressSuggestions[addr.id].map((sug, i) => (
-                                    <div key={i} onClick={() => selectSuggestion(addr.id, sug)} className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-xs border-b border-gray-100 last:border-0">
-                                      <div className="font-bold text-gray-800">{sug.district}</div>
-                                      <div className="text-gray-500 text-[10px]">{sug.amphoe}, {sug.province}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex flex-col gap-1 col-span-1">
-                              <label className="text-[10px] font-bold text-gray-500">Subdistrict</label>
-                              <input type="text" placeholder="Subdistrict" value={addr.subDistrict} onChange={e => updateAddress(addr.id, 'subDistrict', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
-                            </div>
-                            <div className="flex flex-col gap-1 col-span-1">
-                              <label className="text-[10px] font-bold text-gray-500">District</label>
-                              <input type="text" placeholder="District" value={addr.district} onChange={e => updateAddress(addr.id, 'district', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
-                            </div>
-                            <div className="flex flex-col gap-1 col-span-1">
-                              <label className="text-[10px] font-bold text-gray-500">Province</label>
-                              <input type="text" placeholder="Province" value={addr.province} onChange={e => updateAddress(addr.id, 'province', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none disabled:text-gray-400" disabled={!canFillAddress || selectedAddressId !== addr.id} />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                <section>
-                  <div className="flex justify-between items-center mb-3">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                      <Package className="w-3 h-3" />
-                      Product List ({orderItems.length})
-                    </label>
-                    <button type="button" onClick={handleAddRow} className="text-xs font-bold text-gray-900 hover:underline">+ Add item</button>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    {orderItems.map(item => {
-                      return (
-                        <div key={item.id} className="flex gap-2 items-center bg-gray-50 p-2 rounded-xl border border-gray-200 shadow-sm">
-                          <div className="flex-1 relative">
-                            <select 
-                              value={item.sku}
-                              onChange={e => handleUpdateRow(item.id, 'sku', e.target.value)}
-                              className="w-full appearance-none bg-white border border-gray-200 rounded-lg pl-3 pr-8 py-2 text-xs font-medium focus:ring-1 focus:ring-gray-900 outline-none text-gray-900"
-                            >
-                              <option value="" disabled>เลือกสินค้า...</option>
-                              {products.map(p => {
-                                const isSelectedByOther = orderItems.some(i => i.id !== item.id && i.sku === p.sku)
-                                if (isSelectedByOther) return null
-                                return (
-                                  <option key={p.sku} value={p.sku} disabled={p.qty === 0} className={p.qty === 0 ? "text-gray-400" : ""}>
-                                    {p.name} — {p.qty} left {p.qty === 0 && '(Out of stock)'}
-                                  </option>
-                                )
-                              })}
-                            </select>
-                            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                          </div>
-                          
-                          <input 
-                            type="number" 
-                            value={item.qty}
-                            onChange={e => handleUpdateRow(item.id, 'qty', e.target.value)}
-                            min="1" 
-                            disabled={!item.sku}
-                            className={`w-14 border border-gray-200 rounded-lg px-2 py-2 text-xs font-medium text-center focus:ring-1 focus:ring-gray-900 outline-none ${!item.sku ? 'bg-gray-100 opacity-50 cursor-not-allowed text-gray-400' : 'bg-white'}`} 
-                          />
-                          <button type="button" onClick={() => handleRemoveRow(item.id)} className="text-gray-400 hover:text-rose-500 p-1 shrink-0">
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  <div className="flex justify-between items-end border-t border-gray-100 pt-4">
-                    <span className="text-sm font-bold text-gray-500">Total</span>
-                    <span className="text-2xl font-black text-gray-900">{formatPrice(calculateTotal())}</span>
-                  </div>
-                </section>
-
-                <section className="bg-gray-900 rounded-2xl p-5 text-white relative overflow-hidden group">
-                  <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-white to-transparent mix-blend-overlay pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
-                  
-                  <div className="relative z-10">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <CreditCard className="w-3 h-3" />
-                      Payment Method
-                    </label>
-                    
-                    <div className="flex p-1 bg-gray-800 rounded-xl mb-5">
-                      {(channel === 'POS' ? ['BANK TRANSFER', 'CASH'] : ['BANK TRANSFER', 'CASH ON DELIVERY']).map(method => (
-                        <button
-                          key={method}
-                          onClick={() => {
-                            setPayment(method)
-                            if (method === 'CASH ON DELIVERY') setIsPaid(false)
-                            if (channel === 'POS' && method === 'CASH') setIsPaid(true)
-                          }}
-                          className={`flex-1 text-[11px] font-bold py-2.5 rounded-lg transition-all ${payment === method ? 'text-[#00b6d5] bg-[#e6f8fb] border border-[#66d4e6] shadow-md' : 'text-gray-400 hover:text-white border border-transparent'}`}
-                        >
-                          {method}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex flex-col gap-3 mb-6">
-                      <label className={`flex items-center gap-3 group/check ${payment === 'CASH ON DELIVERY' || (channel === 'POS' && payment === 'CASH') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-                        <div className="relative flex items-center justify-center">
-                          <input 
-                            type="checkbox" 
-                            className="peer appearance-none w-5 h-5 rounded-md border-2 border-gray-600 bg-gray-800 focus:outline-none transition-colors" 
-                            checked={isPaid === true}
-                            onChange={() => {
-                              if (payment !== 'CASH ON DELIVERY' && !(channel === 'POS' && payment === 'CASH')) {
-                                setIsPaid(true)
-                              }
-                            }}
-                            disabled={payment === 'CASH ON DELIVERY' || (channel === 'POS' && payment === 'CASH')}
-                          />
-                          <div className={`absolute text-white pointer-events-none transition-opacity ${isPaid ? 'opacity-100' : 'opacity-0'}`}>
-                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                          </div>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className={`text-[11px] font-medium transition-colors ${payment === 'CASH ON DELIVERY' || (channel === 'POS' && payment === 'CASH') ? 'text-gray-400' : 'text-gray-300 group-hover/check:text-white'}`}>
-                            Paid (ชำระแล้ว)
-                          </span>
-                          {payment === 'CASH ON DELIVERY' && (
-                            <span className="text-[9px] text-red-400 mt-0.5">
-                              * Not applicable for COD
-                            </span>
-                          )}
-                          {(channel === 'POS' && payment === 'CASH') && (
-                            <span className="text-[9px] text-emerald-400 mt-0.5">
-                              * Auto-paid for POS Cash
-                            </span>
-                          )}
-                        </div>
-                      </label>
-
-                      {!(channel === 'POS' && payment === 'CASH') && (
-                        <label className="flex items-center gap-3 cursor-pointer group/check">
-                          <div className="relative flex items-center justify-center">
-                            <input 
-                              type="checkbox" 
-                              className="peer appearance-none w-5 h-5 rounded-md border-2 border-gray-600 bg-gray-800 focus:outline-none transition-colors" 
-                              checked={isPaid === false}
-                              onChange={() => setIsPaid(false)}
-                            />
-                            <div className={`absolute text-white pointer-events-none transition-opacity ${!isPaid ? 'opacity-100' : 'opacity-0'}`}>
-                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                              </svg>
-                            </div>
-                          </div>
-                          <span className="text-[11px] font-medium text-gray-300 group-hover/check:text-white transition-colors">
-                            Awaiting payment (รอการชำระเงิน)
-                          </span>
-                        </label>
-                      )}
-                    </div>
-
-                    <button 
-                      onClick={handleSaveOrder} 
-                      disabled={isSaving}
-                      className={`w-full text-white bg-[#07090c] hover:bg-gray-800 font-black text-sm py-4 rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all flex items-center justify-center gap-2 ${isSaving ? 'opacity-50 cursor-not-allowed transform-none' : 'transform hover:-translate-y-0.5 active:translate-y-0'}`}
-                    >
-                      {isSaving ? 'Saving...' : 'Save order & deduct stock'}
-                    </button>
-                  </div>
-                </section>
-
-              </div>
-            </div>
-
-          </div>
-      
-      {/* Modal */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-transparent backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-sm w-full max-w-3xl overflow-hidden border border-gray-200 flex flex-col max-h-[90vh]">
-            
-            {/* Header */}
-            <div className="flex items-start justify-between px-8 py-6 bg-white border-b border-gray-100">
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h3 className="font-black text-gray-900 text-2xl tracking-tight">Order {selectedOrder.order_number || selectedOrder.id.split('-')[0]}</h3>
-                  <span className={`text-[11px] font-bold px-3 py-1 ${getStatusColor(selectedOrder.status)} shadow-sm`}>
-                    {selectedOrder.status}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1.5 mt-3">
-                  <p className="text-sm text-gray-500 font-medium flex items-center gap-2">
-                    <span className="w-28 text-gray-400 text-xs font-bold tracking-wider">ORDER CREATED:</span>
-                    {selectedOrder.date}
-                  </p>
-                  
-                  {selectedOrder.status === 'Awaiting payment' && (
-                    <p className="text-sm text-[#da8018] font-medium flex items-center gap-2">
-                      <span className="w-28 text-[#da8018]/60 text-xs font-bold tracking-wider">WAITING SINCE:</span>
-                      {selectedOrder.date}
-                    </p>
-                  )}
-
-                  {selectedOrder.status === 'Paid' && selectedOrder.paidDate && (
-                    <p className="text-sm text-emerald-600 font-medium flex items-center gap-2">
-                      <span className="w-28 text-emerald-500/70 text-xs font-bold tracking-wider">PAID AT:</span>
-                      {selectedOrder.paidDate}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer text-gray-400 hover:text-gray-900"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {/* Content Body */}
-            <div className="p-8 overflow-y-auto space-y-8 bg-gray-50/50">
-              
-              {selectedOrder.status === 'Cancelled' && selectedOrder.cancelReason && (
-                <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-baseline gap-3">
-                  <div className="text-red-600 font-bold text-sm whitespace-nowrap">เหตุผลการยกเลิก:</div>
-                  <div className="text-red-700 text-sm font-medium leading-relaxed">{selectedOrder.cancelReason}</div>
+                  ))}
                 </div>
               )}
+            </div>
 
-              {/* Info Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <Type className="w-3.5 h-3.5" /> Customer Info
-                  </h4>
-                  <p className="font-bold text-gray-900 text-lg mb-0.5">{selectedOrder.customerName}</p>
-                  <p className="text-sm text-gray-500 mb-3">{selectedOrder.customerPhone}</p>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <div className="inline-flex items-center gap-2 text-xs font-semibold bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
-                      <span className="text-gray-400">CHANNEL:</span>
-                      <span className={`px-2 py-0.5 rounded-md ${getChannelColor(selectedOrder.channel)}`}>
-                        {selectedOrder.channel === 'FB' ? 'Facebook' : selectedOrder.channel}
-                      </span>
-                    </div>
-                    {selectedOrder.paymentMethod && (
-                      <div className="inline-flex items-center gap-2 text-xs font-semibold bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
-                        <span className="text-gray-400">PAYMENT:</span>
-                        <span className="text-gray-700">{selectedOrder.paymentMethod}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" /> Shipping Address
-                  </h4>
-                  {selectedOrder.address !== '-' ? (
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium">
-                      {(() => {
-                        try {
-                          const addr = JSON.parse(selectedOrder.address);
-                          // address object keys from Supabase are snake_case: house_number, street, etc.
-                          return `${addr.house_number || ''} ${addr.street || ''}\nต.${addr.sub_district || ''} อ.${addr.district || ''}\nจ.${addr.province || ''} ${addr.zipcode || ''}`.trim();
-                        } catch (e) {
-                          return selectedOrder.address;
-                        }
-                      })()}
-                    </p>
-                  ) : (
-                    <div className="h-full flex items-center text-sm text-gray-400 italic">
-                      No shipping address required
-                    </div>
-                  )}
-                </div>
+            {/* Action Buttons */}
+            <div className="p-5 border-t border-gray-100 bg-gray-50/50 mt-auto shrink-0">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-sm font-medium text-gray-500">รวมรายการทั้งหมด:</span>
+                <span className="text-lg font-black text-gray-900">{cart.length} รายการ</span>
               </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setCart([])
+                    setReferenceDoc('')
+                  }}
+                  className="flex-1 py-3 px-4 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  onClick={handleOrder}
+                  disabled={isSubmitting || cart.length === 0}
+                  className="flex-1 py-3 px-4 bg-primary hover:bg-primary-dark text-white rounded-xl font-semibold text-sm transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  {isSubmitting ? 'กำลังบันทึก...' : 'สั่งซื้อ / รับเข้า'}
+                </button>
+              </div>
+            </div>
+          </div>
 
-              {/* Items Table */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden">
-                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-                  <h4 className="text-[11px] font-black text-gray-900 uppercase tracking-widest flex items-center gap-1.5">
-                    <Package className="w-4 h-4 text-gray-400" />
-                    Order Items
-                  </h4>
-                  <span className="text-xs font-bold text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">
-                    {selectedOrder.items.length} items
-                  </span>
-                </div>
-                
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-gray-50/80 border-b border-gray-100">
-                    <tr>
-                      <th className="py-3.5 px-6 font-bold text-gray-400 text-xs uppercase tracking-wider">Product</th>
-                      <th className="py-3.5 px-6 font-bold text-gray-400 text-xs uppercase tracking-wider text-center">Quantity</th>
-                      <th className="py-3.5 px-6 font-bold text-gray-400 text-xs uppercase tracking-wider text-right">Price</th>
+          {/* RIGHT PANEL: Inventory Table */}
+          <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 min-w-0 overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 shrink-0">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <Package className="w-5 h-5 text-primary" />
+                Inventory
+              </h2>
+              <div className="relative w-full sm:w-64">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <Search className="h-4 w-4 text-gray-400" />
+                </span>
+                <input
+                  type="text"
+                  placeholder="ค้นหาสินค้า / SKU..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder-gray-400"
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="sticky top-0 bg-white border-b border-gray-100 z-10 shadow-sm">
+                  <tr className="text-xs font-semibold uppercase tracking-wider text-gray-500 bg-gray-50/50">
+                    <th className="px-6 py-4">Product Details</th>
+                    <th className="px-6 py-4 text-center">Stock</th>
+                    <th className="px-6 py-4">Price</th>
+                    <th className="px-6 py-4 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredProducts.map((product) => (
+                    <tr key={product.sku} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-gray-900">{product.name}</div>
+                        <div className="text-xs text-gray-500 font-medium mt-0.5">SKU: {product.sku}</div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`font-semibold ${product.qty === 0 ? 'text-rose-600' : product.qty <= product.threshold ? 'text-amber-600' : 'text-gray-900'}`}>
+                          {product.qty}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-medium text-gray-900">
+                        ฿{product.price.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <button
+                          onClick={() => addToCart(product)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          เพิ่ม
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {selectedOrder.items.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
-                        <td className="py-4 px-6">
-                          <div className="font-bold text-gray-900 mb-0.5">{item.name}</div>
-                          <div className="text-xs text-gray-900 font-medium">SKU: {item.sku}</div>
-                        </td>
-                        <td className="py-4 px-6 text-center font-bold text-gray-700 bg-gray-50/30">{item.qty}</td>
-                        <td className="py-4 px-6 text-right font-bold text-gray-900">
-                          {formatPrice(item.price * item.qty)}
-                          <div className="text-[10px] text-gray-400 mt-0.5 font-normal">
-                            ({formatPrice(item.price)} / ea)
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                
-                {/* Total Footer */}
-                <div className="bg-gray-900 p-6 flex justify-between items-center text-white">
-                  <div className="flex flex-col justify-center">
-                    <span className="text-gray-400 text-[10px] uppercase font-black tracking-widest">Total Amount</span>
-                    <span className="text-white text-sm font-bold mt-0.5">Net Total</span>
-                  </div>
-                  <span className="text-3xl font-black tracking-tight">{formatPrice(selectedOrder.total)}</span>
-                </div>
-              </div>
-              
+                  ))}
+                  {filteredProducts.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-12 text-center text-gray-400">
+                        ไม่พบสินค้าที่ค้นหา
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
+
         </div>
-      )}
-      {/* Cancel Order Modal */}
-      {cancelOrderObj && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-transparent backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
-            {/* Header */}
-            <div className="bg-[#e70029] p-5 flex justify-between items-center text-white">
-              <h3 className="text-2xl font-bold">ยกเลิกคำสั่งซื้อ {cancelOrderObj.order_number || cancelOrderObj.id.split('-')[0]}</h3>
-              <button 
-                onClick={() => setCancelOrderObj(null)}
-                className="text-white/80 hover:text-white bg-black/10 hover:bg-black/20 rounded-full p-1.5 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {/* Body */}
-            <div className="p-6">
-              <label className="block text-sm font-bold text-gray-900 mb-2">
-                เหตุผลการยกเลิก (โปรดระบุ)
-              </label>
-              <textarea
-                value={cancelReasonStr}
-                onChange={(e) => setCancelReasonStr(e.target.value)}
-                rows={4}
-                className="w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#e70029]/20 focus:border-[#e70029] transition-all resize-none"
-                placeholder="เช่น ลูกค้าเปลี่ยนใจ, สินค้าหมด, ฯลฯ"
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                * การยกเลิกคำสั่งซื้อจะคืนจำนวนสินค้า ({cancelOrderObj.items.reduce((acc, i) => acc + i.qty, 0)} ชิ้น) กลับสู่คลังอัตโนมัติ
-              </p>
-            </div>
-            
-            {/* Footer */}
-            <div className="p-5 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50">
-              <button 
-                onClick={() => setCancelOrderObj(null)}
-                className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-200 transition-colors"
-              >
-                ย้อนกลับ
-              </button>
-              <button 
-                onClick={handleCancelOrder}
-                disabled={!cancelReasonStr.trim()}
-                className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-[#e70029] hover:bg-[#c90022] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-[#e70029]/20"
-              >
-                ยืนยันการยกเลิก
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </AppLayout>
   )
 }

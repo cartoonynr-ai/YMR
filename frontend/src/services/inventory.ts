@@ -171,7 +171,7 @@ export const addProduct = async (product: Product): Promise<{ success: boolean; 
   return { success: true }
 }
 
-export const updateProduct = async (oldSku: string, product: Product): Promise<{ success: boolean; error?: string }> => {
+export const updateProduct = async (oldSku: string, product: Product, customReason?: string): Promise<{ success: boolean; error?: string }> => {
   const { data: sessionData } = await supabase.auth.getSession()
   const userId = sessionData.session?.user.id
 
@@ -201,7 +201,7 @@ export const updateProduct = async (oldSku: string, product: Product): Promise<{
       product_id: oldProd.id,
       change: qtyDiff,
       balance: product.qty,
-      reason: qtyDiff > 0 ? 'แก้ไขจำนวนสต็อก (ปรับเพิ่ม)' : 'แก้ไขจำนวนสต็อก (ปรับลด)',
+      reason: customReason ? customReason : (qtyDiff > 0 ? 'แก้ไขจำนวนสต็อก (ปรับเพิ่ม)' : 'แก้ไขจำนวนสต็อก (ปรับลด)'),
       created_by: userId,
       reference_doc: product.reference_doc
     })
