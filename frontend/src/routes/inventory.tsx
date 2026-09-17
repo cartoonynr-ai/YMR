@@ -281,6 +281,7 @@ function Inventory() {
       price: Number(price) || 0,
       qty: Number(qty) || 0,
       threshold: Number(threshold) || 0,
+      reference_doc: productForm.reference_doc?.trim() || '',
     }
 
     if (editingProduct) {
