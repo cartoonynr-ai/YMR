@@ -107,8 +107,16 @@ function Inventory() {
   // Real-time Barcode Duplicate Validation
   const isBarcodeDuplicate = useMemo(() => {
     if (!productForm.barcode) return false;
-    return products.some(p => p.barcode === productForm.barcode && p.sku !== productForm.sku);
-  }, [productForm.barcode, productForm.sku, products]);
+    // When editing, exclude the current product's original barcode
+    const originalBarcode = editingProduct?.barcode;
+    return products.some(p => p.barcode === productForm.barcode && p.barcode !== originalBarcode);
+  }, [productForm.barcode, editingProduct, products]);
+
+  // Real-time SKU Duplicate Validation
+  const isSkuDuplicate = useMemo(() => {
+    if (!productForm.sku || !!editingProduct) return false; // Cannot edit SKU
+    return products.some(p => p.sku === productForm.sku);
+  }, [productForm.sku, editingProduct, products]);
 
   // Load Data
   const loadData = async () => {
@@ -247,6 +255,11 @@ function Inventory() {
 
     if (isBarcodeDuplicate) {
       setAlert({ message: 'บาร์โค้ดนี้มีในระบบแล้ว ไม่สามารถบันทึกได้', type: 'error' })
+      return
+    }
+
+    if (isSkuDuplicate) {
+      setAlert({ message: 'SKU นี้มีในระบบแล้ว ไม่สามารถบันทึกได้', type: 'error' })
       return
     }
 
@@ -752,8 +765,17 @@ function Inventory() {
                       disabled={!!editingProduct} // SKU shouldn't be edited once created
                       value={productForm.sku || ''}
                       onChange={(e) => setProductForm((f) => ({ ...f, sku: e.target.value }))}
-                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-gray-50/50 disabled:opacity-100 disabled:text-black disabled:bg-gray-200 disabled:cursor-not-allowed"
+                      className={`w-full px-3.5 py-2 border rounded-lg focus:outline-none text-sm transition-all bg-gray-50/50 disabled:opacity-100 disabled:text-black disabled:bg-gray-200 disabled:cursor-not-allowed ${
+                        isSkuDuplicate 
+                          ? 'border-rose-500 text-rose-600 focus:border-rose-500' 
+                          : 'border-gray-200'
+                      }`}
                     />
+                    {isSkuDuplicate && (
+                      <p className="text-xs text-rose-500 mt-1.5 flex items-center gap-1 font-medium">
+                        <AlertTriangle className="w-3.5 h-3.5" /> รหัส SKU นี้มีในระบบแล้ว
+                      </p>
+                    )}
                   </div>
 
                   {/* Barcode */}
@@ -897,9 +919,9 @@ function Inventory() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isBarcodeDuplicate}
+                  disabled={isBarcodeDuplicate || isSkuDuplicate}
                   className={`px-5 py-2 rounded-lg text-sm font-medium shadow-sm transition-all ${
-                    isBarcodeDuplicate
+                    (isBarcodeDuplicate || isSkuDuplicate)
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-primary hover:bg-primary-dark text-white cursor-pointer'
                   }`}
