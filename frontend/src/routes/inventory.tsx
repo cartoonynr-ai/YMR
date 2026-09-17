@@ -821,11 +821,17 @@ function Inventory() {
                     </label>
                     <input
                       type="text"
-                      placeholder="Enter Brand"
+                      list="brand-options"
+                      placeholder="Enter Brand หรือพิมพ์ใหม่"
                       value={productForm.brand || ''}
                       onChange={(e) => setProductForm((f) => ({ ...f, brand: e.target.value }))}
                       className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
                     />
+                    <datalist id="brand-options">
+                      {Array.from(new Set(products.map(p => p.brand).filter(Boolean))).sort().map(brand => (
+                        <option key={brand} value={brand} />
+                      ))}
+                    </datalist>
                   </div>
 
                   {/* Compatibility */}
@@ -835,11 +841,17 @@ function Inventory() {
                     </label>
                     <input
                       type="text"
-                      placeholder="Enter Compatibility"
+                      list="compat-options"
+                      placeholder="Enter Compatibility หรือพิมพ์ใหม่"
                       value={productForm.compatibility || ''}
                       onChange={(e) => setProductForm((f) => ({ ...f, compatibility: e.target.value }))}
                       className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
                     />
+                    <datalist id="compat-options">
+                      {Array.from(new Set(products.map(p => p.compatibility).filter(Boolean))).sort().map(compat => (
+                        <option key={compat} value={compat} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
 
