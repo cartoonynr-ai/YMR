@@ -293,6 +293,7 @@ export type Database = {
           id: string
           product_id: string | null
           reason: string
+          reference_doc: string | null
         }
         Insert: {
           balance: number
@@ -302,6 +303,7 @@ export type Database = {
           id?: string
           product_id?: string | null
           reason: string
+          reference_doc?: string | null
         }
         Update: {
           balance?: number
@@ -311,6 +313,7 @@ export type Database = {
           id?: string
           product_id?: string | null
           reason?: string
+          reference_doc?: string | null
         }
         Relationships: [
           {
