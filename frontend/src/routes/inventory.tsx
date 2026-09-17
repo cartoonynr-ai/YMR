@@ -912,20 +912,6 @@ function Inventory() {
                     />
                   </div>
                 </div>
-
-                {/* Reference Doc (Optional) */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
-                    Reference Document / PO (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. PO-2023-001, Invoice #1234"
-                    value={productForm.reference_doc || ''}
-                    onChange={(e) => setProductForm((f) => ({ ...f, reference_doc: e.target.value }))}
-                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all focus:bg-white"
-                  />
-                </div>
               </div>
 
               {/* Actions */}
