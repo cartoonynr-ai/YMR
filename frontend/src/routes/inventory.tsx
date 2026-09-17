@@ -104,6 +104,12 @@ function Inventory() {
     thaiName: '',
   })
 
+  // Real-time Barcode Duplicate Validation
+  const isBarcodeDuplicate = useMemo(() => {
+    if (!productForm.barcode) return false;
+    return products.some(p => p.barcode === productForm.barcode && p.sku !== productForm.sku);
+  }, [productForm.barcode, productForm.sku, products]);
+
   // Load Data
   const loadData = async () => {
     setProducts(await getProducts())
@@ -236,6 +242,11 @@ function Inventory() {
 
     if (!name || !sku || !barcode || !category) {
       setAlert({ message: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน', type: 'error' })
+      return
+    }
+
+    if (isBarcodeDuplicate) {
+      setAlert({ message: 'บาร์โค้ดนี้มีในระบบแล้ว ไม่สามารถบันทึกได้', type: 'error' })
       return
     }
 
@@ -760,8 +771,17 @@ function Inventory() {
                       minLength={13}
                       value={productForm.barcode || ''}
                       onChange={(e) => setProductForm((f) => ({ ...f, barcode: e.target.value.replace(/\D/g, '') }))}
-                      className="w-full px-3.5 py-2 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-gray-50/50"
+                      className={`w-full px-3.5 py-2 border rounded-lg focus:outline-none text-sm transition-all bg-gray-50/50 ${
+                        isBarcodeDuplicate 
+                          ? 'border-rose-500 text-rose-600 focus:border-rose-500' 
+                          : 'border-gray-200'
+                      }`}
                     />
+                    {isBarcodeDuplicate && (
+                      <p className="text-xs text-rose-500 mt-1.5 flex items-center gap-1 font-medium">
+                        <AlertTriangle className="w-3.5 h-3.5" /> บาร์โค้ดนี้ซ้ำกับสินค้าอื่น
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -877,7 +897,12 @@ function Inventory() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium shadow-sm transition-all cursor-pointer"
+                  disabled={isBarcodeDuplicate}
+                  className={`px-5 py-2 rounded-lg text-sm font-medium shadow-sm transition-all ${
+                    isBarcodeDuplicate
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-primary hover:bg-primary-dark text-white cursor-pointer'
+                  }`}
                 >
                   Confirm
                 </button>
