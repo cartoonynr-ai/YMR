@@ -6,7 +6,7 @@ const adminMenuItems = [
   { label: 'Dashboard', to: '/dashboard', exact: true },
   { label: 'Inventory', to: '/inventory', exact: false },
   { label: 'Order', to: '/order', exact: false },
-  { label: 'New Order', to: '/new-order', exact: false },
+  { label: 'Receive Stock', to: '/new-order', exact: false },
 ] as const
 
 const staffMenuItems = [

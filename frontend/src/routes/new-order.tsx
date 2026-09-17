@@ -135,7 +135,7 @@ function NewOrderPage() {
       <div className="flex flex-col h-full max-h-[calc(100vh-2rem)]">
         <header className="flex justify-between items-center mb-6 shrink-0">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Inbound Order (รับของเข้า)</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Receive Stock</h1>
             <p className="text-sm text-gray-500 mt-1">เพิ่มสต็อกสินค้าจากการสั่งซื้อ</p>
           </div>
         </header>
@@ -147,7 +147,7 @@ function NewOrderPage() {
             <div className="p-5 border-b border-gray-100 bg-gray-50/50">
               <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
-                Record new order
+                Order
               </h2>
             </div>
             
