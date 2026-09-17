@@ -140,9 +140,9 @@ function NewOrderPage() {
           </div>
         </header>
 
-        <div className="flex flex-col lg:flex-row gap-6 h-full min-h-0 overflow-hidden">
+        <div className="flex flex-col lg:flex-row-reverse gap-6 h-full min-h-0 overflow-hidden">
           
-          {/* LEFT PANEL: Restock Form */}
+          {/* RIGHT PANEL: Restock Form */}
           <div className="w-full lg:w-[450px] shrink-0 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-5 border-b border-gray-100 bg-gray-50/50">
               <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -240,7 +240,7 @@ function NewOrderPage() {
             </div>
           </div>
 
-          {/* RIGHT PANEL: Inventory Table */}
+          {/* LEFT PANEL: Inventory Table */}
           <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 min-w-0 overflow-hidden">
             <div className="p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 shrink-0">
               <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
