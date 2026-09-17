@@ -251,3 +251,36 @@ export const deleteProduct = async (sku: string): Promise<boolean> => {
 
   return true
 }
+
+export const generateNewPoNumber = async (): Promise<string> => {
+  const today = new Date()
+  const day = String(today.getDate()).padStart(2, '0')
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const year = String(today.getFullYear()).slice(-2) // e.g., '26'
+  
+  const prefix = `PO-${day}${month}${year}-`
+
+  const { data, error } = await supabase
+    .from('stock_movements')
+    .select('reference_doc')
+    .like('reference_doc', `${prefix}%`)
+    .order('reference_doc', { ascending: false })
+    .limit(1)
+
+  if (error) {
+    console.error("Error fetching PO number:", error)
+    return `${prefix}001`
+  }
+
+  if (data && data.length > 0 && data[0].reference_doc) {
+    const lastDoc = data[0].reference_doc
+    const lastSeqStr = lastDoc.split('-').pop()
+    const lastSeq = parseInt(lastSeqStr || '0', 10)
+    if (!isNaN(lastSeq)) {
+      const newSeq = String(lastSeq + 1).padStart(3, '0')
+      return `${prefix}${newSeq}`
+    }
+  }
+
+  return `${prefix}001`
+}

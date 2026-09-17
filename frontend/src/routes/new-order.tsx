@@ -10,7 +10,7 @@ import {
   FileText,
   X
 } from 'lucide-react'
-import { getProducts, updateProduct, type Product } from '../services/inventory'
+import { getProducts, updateProduct, generateNewPoNumber, type Product } from '../services/inventory'
 
 export const Route = createFileRoute('/new-order')({
   beforeLoad: ({ context }) => {
@@ -40,10 +40,14 @@ function NewOrderPage() {
 
   const loadData = async () => {
     try {
-      const prods = await getProducts()
+      const [prods, newPo] = await Promise.all([
+        getProducts(),
+        generateNewPoNumber()
+      ])
       setProducts(prods)
+      setReferenceDoc(newPo)
     } catch (err: any) {
-      showToast(err.message || 'Error loading inventory')
+      showToast(err.message || 'Error loading data')
     }
   }
 
@@ -114,7 +118,6 @@ function NewOrderPage() {
     if (!hasError) {
       showToast('บันทึกการรับสินค้าเข้าสต็อกเรียบร้อยแล้ว!', 'success')
       setCart([])
-      setReferenceDoc('')
       loadData() // Refresh inventory
     }
     
@@ -155,14 +158,13 @@ function NewOrderPage() {
               {/* Reference Document */}
               <div className="mb-6">
                 <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">
-                  Reference Document / PO (Optional)
+                  เลขที่ใบสั่งซื้อ (PO)
                 </label>
                 <input
                   type="text"
                   value={referenceDoc}
-                  onChange={(e) => setReferenceDoc(e.target.value)}
-                  placeholder="เช่น PO-2026-001, ใบส่งของ 1234"
-                  className="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary px-3 py-2.5 outline-none transition-all placeholder:text-gray-300"
+                  readOnly
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-500 font-medium text-sm rounded-xl px-3 py-2.5 outline-none cursor-not-allowed"
                 />
               </div>
 
@@ -228,7 +230,6 @@ function NewOrderPage() {
                 <button
                   onClick={() => {
                     setCart([])
-                    setReferenceDoc('')
                   }}
                   className="flex-1 py-3 px-4 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl font-semibold text-sm transition-colors cursor-pointer"
                 >
