@@ -548,7 +548,7 @@ function Inventory() {
           {/* Top Card: Brands */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900">ยี่ห้อรถ</h3>
+              <h3 className="font-bold text-gray-900">Brand</h3>
               <button className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded-lg transition-all cursor-pointer">
                 <Plus className="w-3.5 h-3.5" />
                 <span>เพิ่มยี่ห้อรถ</span>
