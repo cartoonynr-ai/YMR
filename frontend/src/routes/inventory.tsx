@@ -30,13 +30,13 @@ import {
 } from '../services/inventory'
 
 type InventorySearch = {
-  tab?: 'all' | 'low' | 'history' | 'categories'
+  tab?: 'all' | 'low' | 'history' | 'categories' | 'compatibility'
 }
 
 export const Route = createFileRoute('/inventory')({
   validateSearch: (search: Record<string, unknown>): InventorySearch => {
     return {
-      tab: (search.tab as 'all' | 'low' | 'history' | 'categories') || undefined,
+      tab: (search.tab as 'all' | 'low' | 'history' | 'categories' | 'compatibility') || undefined,
     }
   },
   beforeLoad: ({ context }) => {
@@ -50,10 +50,12 @@ export const Route = createFileRoute('/inventory')({
   component: Inventory,
 })
 
-type TabType = 'all' | 'low' | 'history' | 'categories'
+type TabType = 'all' | 'low' | 'history' | 'categories' | 'compatibility'
 
 function Inventory() {
   const search = Route.useSearch()
+
+
   
   // Tab State
   const [activeTab, setActiveTab] = useState<TabType>(search.tab || 'all')
@@ -69,6 +71,67 @@ function Inventory() {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 9
+
+  // Computed Data for Brand Compatibility
+  const computedBrandData = useMemo(() => {
+    const brandsMap = new Map<string, {
+      id: string
+      name: string
+      modelsMap: Map<string, { name: string, productsCount: number }>
+    }>()
+
+    products.forEach(p => {
+      const brandName = p.brand?.trim() || 'Unknown'
+      const brandId = brandName.toUpperCase()
+      
+      if (!brandsMap.has(brandId)) {
+        brandsMap.set(brandId, { id: brandId, name: brandName, modelsMap: new Map() })
+      }
+      const b = brandsMap.get(brandId)!
+      
+      // compatibility might be comma separated
+      const compats = p.compatibility ? p.compatibility.split(',').map(s => s.trim()).filter(Boolean) : []
+      if (compats.length === 0) {
+        // If product has brand but no compatibility, maybe we add an "Others" model or just skip
+      } else {
+        compats.forEach(modelName => {
+          if (!b.modelsMap.has(modelName)) {
+            b.modelsMap.set(modelName, { name: modelName, productsCount: 0 })
+          }
+          b.modelsMap.get(modelName)!.productsCount += 1
+        })
+      }
+    })
+
+    // Convert to the array format
+    return Array.from(brandsMap.values()).map(b => {
+      const models = Array.from(b.modelsMap.values()).map((m, idx) => ({
+        id: `${b.id}-${idx}`,
+        name: m.name,
+        type: '-',
+        cc: '-',
+        year: '-',
+        productsCount: m.productsCount
+      }))
+      return {
+        id: b.id,
+        name: b.name,
+        modelsCount: models.length,
+        models: models.sort((a, b) => a.name.localeCompare(b.name))
+      }
+    }).sort((a, b) => a.name.localeCompare(b.name))
+  }, [products])
+
+  const [selectedBrand, setSelectedBrand] = useState<string>('')
+  
+  // Set default selected brand when data loads
+  useEffect(() => {
+    if (computedBrandData.length > 0 && !selectedBrand) {
+      setSelectedBrand(computedBrandData[0].id)
+    }
+  }, [computedBrandData, selectedBrand])
+
+  const [modelSearchTerm, setModelSearchTerm] = useState('')
 
   // Modals States
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
@@ -441,13 +504,21 @@ function Inventory() {
         >
           Stock History
         </button>
-        <button
+                <button
           onClick={() => setActiveTab('categories')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
             activeTab === 'categories' ? 'bg-primary text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
           }`}
         >
           Categories
+        </button>
+        <button
+          onClick={() => setActiveTab('compatibility')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+            activeTab === 'compatibility' ? 'bg-primary text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          Brand Compatibility
         </button>
 
         {/* Search Input */}
@@ -471,6 +542,132 @@ function Inventory() {
         </div>
       </div>
       {/* Main Content Pane */}
+      {activeTab === 'compatibility' ? (
+        <div className="flex flex-col gap-6 w-full">
+          
+          {/* Top Card: Brands */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900">ยี่ห้อรถ</h3>
+              <button className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded-lg transition-all cursor-pointer">
+                <Plus className="w-3.5 h-3.5" />
+                <span>เพิ่มยี่ห้อรถ</span>
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {computedBrandData.map(brand => (
+                <button
+                  key={brand.id}
+                  onClick={() => setSelectedBrand(brand.id)}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer border ${
+                    selectedBrand === brand.id
+                      ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {brand.name} <span className="opacity-70 ml-1 text-xs">({brand.modelsCount})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom Card: Compatibility Table */}
+          <div className="flex-1 min-w-0 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
+            <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h3 className="font-bold text-gray-900 text-lg">Compatibility</h3>
+              <button className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg text-sm transition-all shadow-sm cursor-pointer">
+                <Plus className="w-4 h-4" />
+                <span>เพิ่มรุ่น</span>
+              </button>
+            </div>
+            
+            <div className="p-3 border-b border-gray-100 bg-gray-50/50">
+              <div className="relative w-full md:max-w-md">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <Search className="h-4 w-4 text-gray-400" />
+                </span>
+                <input
+                  type="text"
+                  placeholder="ค้นหารุ่นรถ..."
+                  value={modelSearchTerm}
+                  onChange={(e) => setModelSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder-gray-400"
+                />
+              </div>
+            </div>
+            
+            {(() => {
+              const currentBrand = computedBrandData.find(b => b.id === selectedBrand)
+              const models = currentBrand?.models || []
+              const filteredModels = models.filter(m => m.name.toLowerCase().includes(modelSearchTerm.toLowerCase()))
+              
+              if (models.length === 0) {
+                return (
+                  <div className="py-12 flex flex-col items-center justify-center text-gray-400">
+                    <p className="text-sm">ยังไม่มีรุ่นรถในยี่ห้อนี้</p>
+                  </div>
+                )
+              }
+              
+              return (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead>
+                        <tr className="border-b border-gray-100 bg-gray-50/50 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                          <th className="px-6 py-3.5">รุ่น</th>
+                          <th className="px-6 py-3.5">ประเภท</th>
+                          <th className="px-6 py-3.5">ซีซี</th>
+                          <th className="px-6 py-3.5">ปีที่ผลิต</th>
+                          <th className="px-6 py-3.5">สินค้าที่ใช้ได้</th>
+                          <th className="px-6 py-3.5 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredModels.map(model => (
+                          <tr key={model.id} className="border-b border-gray-100 hover:bg-gray-50/40 transition-colors">
+                            <td className="px-6 py-4 font-medium text-gray-900">{model.name}</td>
+                            <td className="px-6 py-4 text-gray-600">{model.type}</td>
+                            <td className="px-6 py-4 text-gray-600">{model.cc}</td>
+                            <td className="px-6 py-4 text-gray-600">{model.year}</td>
+                            <td className="px-6 py-4 text-primary font-medium">{model.productsCount} รายการ</td>
+                            <td className="px-6 py-4 text-center">
+                              <div className="inline-flex gap-1.5">
+                                <button className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer" title="แก้ไขรุ่นรถ">
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title="ลบรุ่นรถ">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between flex-wrap gap-3">
+                    <span className="text-xs text-gray-500 font-medium">
+                      Showing 1-{filteredModels.length} of {filteredModels.length} models
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button disabled className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer">
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <span className="text-xs font-semibold px-3 py-1.5 bg-gray-100 rounded-lg">
+                        Page 1 of 1
+                      </span>
+                      <button disabled className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer">
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+        </div>
+      ) : (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {filteredData.length === 0 ? (
           <div className="py-12 flex flex-col items-center justify-center text-gray-400">
@@ -726,6 +923,8 @@ function Inventory() {
           </>
         )}
       </div>
+
+      )}
 
       {/* PRODUCT CREATION/EDIT MODAL */}
       {isProductModalOpen && (
