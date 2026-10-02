@@ -37,18 +37,18 @@ export interface StockMovement {
 export interface Brand {
   id: string;
   name: string;
-  is_deleted?: boolean;
+  is_deleted?: boolean | null;
 }
 
 export interface VehicleModel {
   id: string;
-  brand_id: string;
+  brand_id: string | null;
   name: string;
-  type?: string;
-  cc?: number;
-  year_start?: number;
-  year_end?: number;
-  is_deleted?: boolean;
+  type?: string | null;
+  cc?: number | null;
+  year_start?: number | null;
+  year_end?: number | null;
+  is_deleted?: boolean | null;
 }
 
 
@@ -350,7 +350,7 @@ export const getVehicleModels = async (): Promise<VehicleModel[]> => {
 export const addVehicleModel = async (model: Partial<VehicleModel>): Promise<{ success: boolean; error?: string }> => {
   const { error } = await supabase.from('vehicle_models').insert({
     brand_id: model.brand_id,
-    name: model.name,
+    name: model.name || '',
     type: model.type,
     cc: model.cc,
     year_start: model.year_start,

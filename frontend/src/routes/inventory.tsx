@@ -120,6 +120,7 @@ function Inventory() {
 
     // 2. Add DB Models
     dbModels.forEach(m => {
+      if (!m.brand_id) return;
       const b = brandsMap.get(m.brand_id)
       if (b) {
         b.modelsMap.set(m.name, {
@@ -464,6 +465,57 @@ function Inventory() {
         setDbBrands(await getBrands())
       } else {
         setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' })
+      }
+    }
+  }
+
+    const handleDeleteBrand = async (id: string) => {
+    if (window.confirm('ต้องการลบยี่ห้อรถนี้หรือไม่?')) {
+      const res = await deleteBrand(id);
+      if (res.success) {
+        setAlert({ message: 'ลบยี่ห้อรถสำเร็จ', type: 'success' });
+        setDbBrands(await getBrands());
+      } else {
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' });
+      }
+    }
+  }
+
+  const handleSaveModel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!modelForm.name || !modelForm.brand_id) {
+      setAlert({ message: 'กรุณากรอกข้อมูลให้ครบ', type: 'error' });
+      return;
+    }
+    if (editingModel) {
+      const res = await updateVehicleModel(editingModel.id, modelForm);
+      if (res.success) {
+        setAlert({ message: 'อัปเดตรุ่นรถสำเร็จ', type: 'success' });
+        setIsModelModalOpen(false);
+        setDbModels(await getVehicleModels());
+      } else {
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' });
+      }
+    } else {
+      const res = await addVehicleModel(modelForm);
+      if (res.success) {
+        setAlert({ message: 'เพิ่มรุ่นรถสำเร็จ', type: 'success' });
+        setIsModelModalOpen(false);
+        setDbModels(await getVehicleModels());
+      } else {
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' });
+      }
+    }
+  }
+
+  const handleDeleteModel = async (id: string) => {
+    if (window.confirm('ต้องการลบรุ่นรถนี้หรือไม่?')) {
+      const res = await deleteVehicleModel(id);
+      if (res.success) {
+        setAlert({ message: 'ลบรุ่นรถสำเร็จ', type: 'success' });
+        setDbModels(await getVehicleModels());
+      } else {
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' });
       }
     }
   }
@@ -1564,5 +1616,7 @@ function Inventory() {
     </AppLayout>
   )
 }
+
+
 
 

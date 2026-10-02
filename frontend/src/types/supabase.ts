@@ -36,6 +36,76 @@ export type Database = {
         }
         Relationships: []
       }
+      brands: {
+        Row: {
+          id: string
+          name: string
+          is_deleted: boolean | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          is_deleted?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          is_deleted?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      vehicle_models: {
+        Row: {
+          id: string
+          brand_id: string | null
+          name: string
+          type: string | null
+          cc: number | null
+          year_start: number | null
+          year_end: number | null
+          is_deleted: boolean | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          brand_id?: string | null
+          name: string
+          type?: string | null
+          cc?: number | null
+          year_start?: number | null
+          year_end?: number | null
+          is_deleted?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          brand_id?: string | null
+          name?: string
+          type?: string | null
+          cc?: number | null
+          year_start?: number | null
+          year_end?: number | null
+          is_deleted?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_models_brand_id_fkey"
+            columns: ["brand_id"]
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       customer_addresses: {
         Row: {
           created_at: string | null
