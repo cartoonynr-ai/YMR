@@ -422,6 +422,42 @@ function Inventory() {
     }
   }
 
+  // Handle Brand CRUD
+  const handleSaveBrand = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    const brandName = brandFormName
+
+    if (!brandName) {
+      setAlert({ message: 'กรุณากรอกชื่อยี่ห้อ', type: 'error' })
+      return
+    }
+
+    if (editingBrand) {
+      // Edit
+      const res = await updateBrand(editingBrand.id, brandName)
+      if (res.success) {
+        setAlert({ message: 'แก้ไขยี่ห้อรถสำเร็จ', type: 'success' })
+        setIsBrandModalOpen(false)
+        setBrandFormName('')
+        setDbBrands(await getBrands())
+      } else {
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' })
+      }
+    } else {
+      // Add
+      const res = await addBrand(brandName)
+      if (res.success) {
+        setAlert({ message: 'เพิ่มยี่ห้อรถสำเร็จ', type: 'success' })
+        setIsBrandModalOpen(false)
+        setBrandFormName('')
+        setDbBrands(await getBrands())
+      } else {
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' })
+      }
+    }
+  }
+
   // Handle Category CRUD
   const handleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
