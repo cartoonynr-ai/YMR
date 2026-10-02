@@ -24,9 +24,19 @@ import {
   addCategory,
   updateCategory,
   deleteCategory,
+  getBrands,
+  addBrand,
+  updateBrand,
+  deleteBrand,
+  getVehicleModels,
+  addVehicleModel,
+  updateVehicleModel,
+  deleteVehicleModel,
   type Product,
   type Category,
   type StockMovement,
+  type Brand,
+  type VehicleModel
 } from '../services/inventory'
 
 type InventorySearch = {
@@ -690,14 +700,14 @@ function Inventory() {
                   onClick={() => {
                     const currentBrand = computedBrandData.find(b => b.id === selectedBrand);
                     if (!currentBrand || !currentBrand.isDb) {
-                      alert('กรุณากด "+ เพิ่มยี่ห้อรถ" ด้านบน แล้วสร้างยี่ห้อนี้ลงในฐานข้อมูลก่อนเพิ่มรุ่นรถครับ (ข้อมูลยี่ห้อปัจจุบันดึงมาจากชื่อสินค้าเท่านั้น)');
+                      window.alert('กรุณากด "+ เพิ่มยี่ห้อรถ" ด้านบน แล้วสร้างยี่ห้อนี้ลงในฐานข้อมูลก่อนเพิ่มรุ่นรถครับ (ข้อมูลยี่ห้อปัจจุบันดึงมาจากชื่อสินค้าเท่านั้น)');
                       return;
                     }
                     setEditingModel(null);
                     setModelForm({ name: '', brand_id: currentBrand.id, type: '', cc: 0, year_start: new Date().getFullYear() });
                     setIsModelModalOpen(true);
                   }}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg text-sm transition-all shadow-sm cursor-pointer w-full sm:w-auto"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-600 hover:bg-gray-200 font-medium rounded-lg text-sm transition-all shadow-sm cursor-pointer w-full sm:w-auto"
                 >
                   <Plus className="w-4 h-4" />
                   <span>เพิ่มรุ่น</span>
@@ -1459,11 +1469,11 @@ function Inventory() {
                   <input
                     type="text"
                     required onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity("กรุณากรอกข้อมูลในช่องนี้ให้ครบถ้วน")} onInput={(e) => (e.target as HTMLInputElement).setCustomValidity("")}
-                    disabled={!!editingCategory} // Cannot change ID/English name as it relates products
+                    
                     placeholder="Engine Oil, Spark Plugs"
                     value={categoryForm.name || ''}
                     onChange={(e) => setCategoryForm((f) => ({ ...f, name: e.target.value }))}
-                    className="w-full px-3.5 py-2 border rounded-lg focus:border-primary focus:outline-none text-sm transition-all bg-gray-50/50 disabled:opacity-100 disabled:text-black disabled:bg-gray-200 disabled:cursor-not-allowed"
+                    className="w-full px-3.5 py-2 border rounded-lg focus:border-primary focus:outline-none text-sm transition-all focus:bg-white"
                   />
                 </div>
 
@@ -1554,3 +1564,5 @@ function Inventory() {
     </AppLayout>
   )
 }
+
+

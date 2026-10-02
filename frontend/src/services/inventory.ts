@@ -315,9 +315,13 @@ export const getBrands = async (): Promise<Brand[]> => {
 }
 
 export const addBrand = async (name: string): Promise<{ success: boolean; error?: string }> => {
-  const { error } = await supabase.from('brands').insert({ name });
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  try {
+    const { error } = await supabase.from('brands').insert({ name });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Unknown error occurred' };
+  }
 }
 
 export const updateBrand = async (id: string, name: string): Promise<{ success: boolean; error?: string }> => {
