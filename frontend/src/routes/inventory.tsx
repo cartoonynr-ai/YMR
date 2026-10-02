@@ -73,54 +73,102 @@ function Inventory() {
   const itemsPerPage = 9
 
   // Computed Data for Brand Compatibility
+  
+  // Brand & Model DB State
+  const [dbBrands, setDbBrands] = useState<Brand[]>([])
+  const [dbModels, setDbModels] = useState<VehicleModel[]>([])
+  
+  const [isBrandModalOpen, setIsBrandModalOpen] = useState(false)
+  const [editingBrand, setEditingBrand] = useState<Brand | null>(null)
+  const [brandFormName, setBrandFormName] = useState('')
+  
+  const [isModelModalOpen, setIsModelModalOpen] = useState(false)
+  const [editingModel, setEditingModel] = useState<VehicleModel | null>(null)
+  const [modelForm, setModelForm] = useState<Partial<VehicleModel>>({ name: '', type: '', cc: 0, year_start: new Date().getFullYear() })
+
   const computedBrandData = useMemo(() => {
     const brandsMap = new Map<string, {
       id: string
       name: string
-      modelsMap: Map<string, { name: string, productsCount: number }>
+      modelsCount: number
+      isDb: boolean
+      modelsMap: Map<string, { id: string, name: string, type: string, cc: string, year: string, productsCount: number, isDb: boolean }>
+      models: any[]
     }>()
 
-    products.forEach(p => {
-      const brandName = p.brand?.trim() || 'Unknown'
-      const brandId = brandName.toUpperCase()
-      
-      if (!brandsMap.has(brandId)) {
-        brandsMap.set(brandId, { id: brandId, name: brandName, modelsMap: new Map() })
-      }
-      const b = brandsMap.get(brandId)!
-      
-      // compatibility might be comma separated
-      const compats = p.compatibility ? p.compatibility.split(',').map(s => s.trim()).filter(Boolean) : []
-      if (compats.length === 0) {
-        // If product has brand but no compatibility, maybe we add an "Others" model or just skip
-      } else {
-        compats.forEach(modelName => {
-          if (!b.modelsMap.has(modelName)) {
-            b.modelsMap.set(modelName, { name: modelName, productsCount: 0 })
-          }
-          b.modelsMap.get(modelName)!.productsCount += 1
+    // 1. Add DB Brands
+    dbBrands.forEach(b => {
+      brandsMap.set(b.id, {
+        id: b.id,
+        name: b.name,
+        modelsCount: 0,
+        isDb: true,
+        modelsMap: new Map(),
+        models: []
+      })
+    })
+
+    // 2. Add DB Models
+    dbModels.forEach(m => {
+      const b = brandsMap.get(m.brand_id)
+      if (b) {
+        b.modelsMap.set(m.name, {
+          id: m.id,
+          name: m.name,
+          type: m.type || '-',
+          cc: m.cc ? m.cc.toString() : '-',
+          year: m.year_start ? `${m.year_start}-${m.year_end || ''}` : '-',
+          productsCount: 0,
+          isDb: true
         })
       }
     })
 
-    // Convert to the array format
-    return Array.from(brandsMap.values()).map(b => {
-      const models = Array.from(b.modelsMap.values()).map((m, idx) => ({
-        id: `${b.id}-${idx}`,
-        name: m.name,
-        type: '-',
-        cc: '-',
-        year: '-',
-        productsCount: m.productsCount
-      }))
-      return {
-        id: b.id,
-        name: b.name,
-        modelsCount: models.length,
-        models: models.sort((a, b) => a.name.localeCompare(b.name))
+    // 3. Merge products text fields
+    products.forEach(p => {
+      if (!p.brand) return
+      const bName = p.brand.trim()
+      
+      // Try to find if this brand name already exists in DB brands
+      let brandObj = Array.from(brandsMap.values()).find(br => br.name.toLowerCase() === bName.toLowerCase())
+      
+      if (!brandObj) {
+        const tempId = bName.toUpperCase()
+        if (!brandsMap.has(tempId)) {
+          brandsMap.set(tempId, { id: tempId, name: bName, modelsCount: 0, isDb: false, modelsMap: new Map(), models: [] })
+        }
+        brandObj = brandsMap.get(tempId)!
       }
-    }).sort((a, b) => a.name.localeCompare(b.name))
-  }, [products])
+
+      const compats = p.compatibility ? p.compatibility.split(',').map(s => s.trim()).filter(Boolean) : []
+      compats.forEach(modelName => {
+        // Find existing model by name
+        let modObj = Array.from(brandObj!.modelsMap.values()).find(m => m.name.toLowerCase() === modelName.toLowerCase())
+        if (!modObj) {
+          brandObj!.modelsMap.set(modelName, {
+            id: modelName,
+            name: modelName,
+            type: '-',
+            cc: '-',
+            year: '-',
+            productsCount: 0,
+            isDb: false
+          })
+          modObj = brandObj!.modelsMap.get(modelName)!
+        }
+        modObj.productsCount += 1
+      })
+    })
+
+    const result = Array.from(brandsMap.values()).map(b => {
+      const arr = Array.from(b.modelsMap.values())
+      b.models = arr
+      b.modelsCount = arr.length
+      return b
+    })
+
+    return result.sort((a, b) => a.name.localeCompare(b.name))
+  }, [products, dbBrands, dbModels])
 
   const [selectedBrand, setSelectedBrand] = useState<string>('')
   
@@ -138,7 +186,8 @@ function Inventory() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null) // null means creating
 
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null) // null means creating
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+ // null means creating
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -188,6 +237,8 @@ function Inventory() {
     setProducts(await getProducts())
     setCategories(await getCategories())
     setMovements(await getMovements())
+    setDbBrands(await getBrands())
+    setDbModels(await getVehicleModels())
   }
 
   useEffect(() => {
@@ -549,7 +600,14 @@ function Inventory() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full p-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-900">Brand</h3>
-              <button className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded-lg transition-all cursor-pointer">
+              <button 
+                onClick={() => {
+                  setEditingBrand(null);
+                  setBrandFormName('');
+                  setIsBrandModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded-lg transition-all cursor-pointer"
+              >
                 <Plus className="w-3.5 h-3.5" />
                 <span>เพิ่มยี่ห้อรถ</span>
               </button>
@@ -575,10 +633,40 @@ function Inventory() {
           <div className="flex-1 min-w-0 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
             <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h3 className="font-bold text-gray-900 text-lg">Compatibility</h3>
-              <button className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg text-sm transition-all shadow-sm cursor-pointer">
-                <Plus className="w-4 h-4" />
-                <span>เพิ่มรุ่น</span>
-              </button>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {(() => {
+                  const currentBrand = computedBrandData.find(b => b.id === selectedBrand);
+                  if (currentBrand && currentBrand.isDb) {
+                    return (
+                      <>
+                        <button onClick={() => { setEditingBrand(currentBrand as any); setBrandFormName(currentBrand.name); setIsBrandModalOpen(true); }} className="p-2.5 text-gray-400 hover:text-primary bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer" title="แก้ไขยี่ห้อรถ">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDeleteBrand(currentBrand.id)} className="p-2.5 text-gray-400 hover:text-rose-600 bg-gray-50 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title="ลบยี่ห้อรถ">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )
+                  }
+                  return null;
+                })()}
+                <button 
+                  onClick={() => {
+                    const currentBrand = computedBrandData.find(b => b.id === selectedBrand);
+                    if (!currentBrand || !currentBrand.isDb) {
+                      alert('กรุณากด "+ เพิ่มยี่ห้อรถ" ด้านบน แล้วสร้างยี่ห้อนี้ลงในฐานข้อมูลก่อนเพิ่มรุ่นรถครับ (ข้อมูลยี่ห้อปัจจุบันดึงมาจากชื่อสินค้าเท่านั้น)');
+                      return;
+                    }
+                    setEditingModel(null);
+                    setModelForm({ name: '', brand_id: currentBrand.id, type: '', cc: 0, year_start: new Date().getFullYear() });
+                    setIsModelModalOpen(true);
+                  }}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg text-sm transition-all shadow-sm cursor-pointer w-full sm:w-auto"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>เพิ่มรุ่น</span>
+                </button>
+              </div>
             </div>
             
             <div className="p-3 border-b border-gray-100 bg-gray-50/50">
@@ -633,12 +721,28 @@ function Inventory() {
                             <td className="px-6 py-4 text-primary font-medium">{model.productsCount} รายการ</td>
                             <td className="px-6 py-4 text-center">
                               <div className="inline-flex gap-1.5">
-                                <button className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer" title="แก้ไขรุ่นรถ">
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <button className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title="ลบรุ่นรถ">
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                {model.isDb ? (
+                                  <>
+                                    <button 
+                                      onClick={() => {
+                                        setEditingModel(model as any);
+                                        setModelForm(model as any);
+                                        setIsModelModalOpen(true);
+                                      }}
+                                      className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer" title="แก้ไขรุ่นรถ"
+                                    >
+                                      <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button 
+                                      onClick={() => handleDeleteModel(model.id)}
+                                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title="ลบรุ่นรถ"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-gray-400" title="ข้อมูลดึงมาจากสินค้า (ไม่สามารถแก้ไขได้)">Auto</span>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -927,6 +1031,141 @@ function Inventory() {
       )}
 
       {/* PRODUCT CREATION/EDIT MODAL */}
+
+      {/* Brand Modal */}
+      {isBrandModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900">{editingBrand ? 'แก้ไขยี่ห้อรถ' : 'เพิ่มยี่ห้อรถ'}</h3>
+              <button 
+                onClick={() => setIsBrandModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSaveBrand} className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อยี่ห้อรถ *</label>
+                <input
+                  type="text"
+                  required
+                  value={brandFormName}
+                  onChange={e => setBrandFormName(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
+                  placeholder="เช่น HONDA, YAMAHA"
+                />
+              </div>
+              <div className="pt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsBrandModalOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors"
+                >
+                  บันทึก
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Model Modal */}
+      {isModelModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden my-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900">{editingModel ? 'แก้ไขรุ่นรถ' : 'เพิ่มรุ่นรถ'}</h3>
+              <button 
+                onClick={() => setIsModelModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSaveModel} className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ยี่ห้อรถ *</label>
+                <select
+                  required
+                  value={modelForm.brand_id || ''}
+                  onChange={e => setModelForm({...modelForm, brand_id: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
+                >
+                  <option value="">เลือกยี่ห้อรถ</option>
+                  {dbBrands.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อรุ่นรถ *</label>
+                <input
+                  type="text"
+                  required
+                  value={modelForm.name || ''}
+                  onChange={e => setModelForm({...modelForm, name: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
+                  placeholder="เช่น PCX 160"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ประเภท</label>
+                <input
+                  type="text"
+                  value={modelForm.type || ''}
+                  onChange={e => setModelForm({...modelForm, type: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
+                  placeholder="เช่น ออโตเมติก, เกียร์ธรรมดา"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ซีซี (CC)</label>
+                  <input
+                    type="number"
+                    value={modelForm.cc || ''}
+                    onChange={e => setModelForm({...modelForm, cc: parseInt(e.target.value) || 0})}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ปีที่เริ่มผลิต</label>
+                  <input
+                    type="number"
+                    value={modelForm.year_start || ''}
+                    onChange={e => setModelForm({...modelForm, year_start: parseInt(e.target.value) || 0})}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
+                  />
+                </div>
+              </div>
+              <div className="pt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModelModalOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors"
+                >
+                  บันทึก
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {isProductModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden border border-gray-100 transform transition-all">
