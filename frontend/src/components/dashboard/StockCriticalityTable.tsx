@@ -67,7 +67,6 @@ export default function StockCriticalityTable() {
                   <div className={`font-semibold ${item.qty === 0 ? 'text-red-600' : 'text-gray-900'}`}>
                     {item.qty}
                   </div>
-                  <div className="text-xs text-gray-400 mt-0.5">Threshold: 5</div>
                 </td>
                 <td className="px-6 py-4">
                   <span
