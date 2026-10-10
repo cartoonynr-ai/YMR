@@ -8,10 +8,9 @@ import {
   AlertCircle,
   CheckCircle2,
   FileText,
-  Upload,
   X
 } from 'lucide-react'
-import { getProducts, updateProduct, generateNewPoNumber, uploadPoDocument, type Product } from '../services/inventory'
+import { getProducts, updateProduct, generateNewPoNumber, type Product } from '../services/inventory'
 
 export const Route = createFileRoute('/new-order')({
   beforeLoad: ({ context }) => {
@@ -30,7 +29,6 @@ function NewOrderPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [cart, setCart] = useState<{ product: Product; addQty: number }[]>([])
   const [referenceDoc, setReferenceDoc] = useState('')
-  const [documentFile, setDocumentFile] = useState<File | null>(null)
   const [lastOrder, setLastOrder] = useState<{
     poNumber: string;
     items: { product: Product; addQty: number }[];
@@ -103,17 +101,6 @@ function NewOrderPage() {
     setIsSubmitting(true)
     let hasError = false
 
-    let documentUrl: string | undefined
-    if (documentFile) {
-      const uploadRes = await uploadPoDocument(documentFile, referenceDoc.trim() || 'PO')
-      if (!uploadRes.success) {
-        showToast(`เกิดข้อผิดพลาดในการอัปโหลดเอกสาร: ${uploadRes.error}`, 'error')
-        setIsSubmitting(false)
-        return
-      }
-      documentUrl = uploadRes.url
-    }
-
     for (const item of cart) {
       const updatedProduct = {
         ...item.product,
@@ -124,8 +111,7 @@ function NewOrderPage() {
       const res = await updateProduct(
         item.product.sku,
         updatedProduct,
-        'รับสินค้าเข้าคลัง (เพิ่มสต็อก)',
-        documentUrl
+        'รับสินค้าเข้าคลัง (เพิ่มสต็อก)'
       )
 
       if (!res.success) {
@@ -146,7 +132,6 @@ function NewOrderPage() {
       })
 
       setCart([])
-      setDocumentFile(null)
       loadData() // Refresh inventory
       
       setTimeout(() => {
@@ -201,23 +186,6 @@ function NewOrderPage() {
                   readOnly
                   className="w-full bg-gray-50 border border-gray-200 text-gray-500 font-medium text-sm rounded-xl px-3 py-2.5 outline-none cursor-not-allowed"
                 />
-              </div>
-
-              {/* Document Upload */}
-              <div className="mb-6">
-                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">
-                  เอกสารใบสั่งซื้อ / ใบส่งของ
-                </label>
-                <label className="flex items-center gap-2 w-full bg-gray-50 border border-dashed border-gray-200 text-gray-500 font-medium text-sm rounded-xl px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors">
-                  <Upload className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{documentFile ? documentFile.name : 'เลือกไฟล์เอกสาร'}</span>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
-                    className="hidden"
-                  />
-                </label>
               </div>
 
               {/* Cart Items */}
