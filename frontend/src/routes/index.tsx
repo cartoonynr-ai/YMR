@@ -53,13 +53,13 @@ function Login() {
     },
   })
 
-  // ไม่ต้องใช้ login จาก useAuth แล้ว เพราะ Supabase จัดการ AuthState ให้เอง
+ 
 
   const onSubmit = async (data: LoginFormInputs) => {
     setApiError(null)
 
     try {
-      // 1. เรียก API Auth ของ Supabase
+      
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
@@ -67,7 +67,7 @@ function Login() {
 
       if (authError) throw authError
 
-      // 2. ดึงข้อมูล Role จากตาราง users
+ 
       if (authData.user) {
         const { data: userData, error: userError } = await supabase
           .from('users')
@@ -77,14 +77,14 @@ function Login() {
 
         if (userError) throw userError
 
-        // ตรวจสอบว่า Role ที่เลือกตรงกับในระบบหรือไม่
+    
         const dbRole = userData.role === 'admin' ? 'ADMIN' : 'STAFF'
         if (dbRole !== data.role) {
           await supabase.auth.signOut()
           throw new Error('ประเภทผู้ใช้งานไม่ถูกต้องกับบัญชีนี้')
         }
 
-        // ฟังก์ชันจัดการการจำอีเมล
+  
         const handleSuccessLogin = (path: string) => {
           if (data.remember_me) {
             localStorage.setItem('rememberedEmail', data.email)

@@ -13,6 +13,7 @@ import {
   FolderPlus,
   Layers,
   ChevronDown,
+  FileText,
 } from 'lucide-react'
 import {
   getProducts,
@@ -79,6 +80,9 @@ function Inventory() {
 
   // Search state
   const [searchTerm, setSearchTerm] = useState('')
+
+  // History filter state
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'in' | 'out'>('in')
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
@@ -180,6 +184,7 @@ function Inventory() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null) // null means creating
 
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
  // null means creating
 
@@ -336,14 +341,24 @@ function Inventory() {
     }
 
     if (activeTab === 'history') {
-      if (!term) return movements
-      return movements.filter(
-        (m) =>
-          m.productName.toLowerCase().includes(term) ||
-          m.sku.toLowerCase().includes(term) ||
-          m.reason.toLowerCase().includes(term) ||
-          m.by.toLowerCase().includes(term)
-      )
+      let result = movements
+
+      if (historyFilter === 'in') {
+        result = result.filter((m) => m.change > 0)
+      } else if (historyFilter === 'out') {
+        result = result.filter((m) => m.change < 0)
+      }
+
+      if (term) {
+        result = result.filter(
+          (m) =>
+            m.productName.toLowerCase().includes(term) ||
+            m.sku.toLowerCase().includes(term) ||
+            m.reason.toLowerCase().includes(term) ||
+            m.by.toLowerCase().includes(term)
+        )
+      }
+      return result
     }
 
     if (activeTab === 'categories') {
@@ -359,7 +374,7 @@ function Inventory() {
     }
 
     return []
-  }, [activeTab, products, categories, movements, searchTerm])
+  }, [activeTab, products, categories, movements, searchTerm, historyFilter])
 
   // Paginated Data
   const paginatedData = useMemo(() => {
@@ -655,16 +670,18 @@ function Inventory() {
               <span>New Category</span>
             </button>
           ) : (
-            <button
-              onClick={() => {
-                setEditingProduct(null)
-                setIsProductModalOpen(true)
-              }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg text-sm transition-all shadow-sm cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Product</span>
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setEditingProduct(null)
+                  setIsProductModalOpen(true)
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg text-sm transition-all shadow-sm cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Product</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -712,8 +729,23 @@ function Inventory() {
           Brand Compatibility
         </button>
 
+        {/* History Filter (Only show when activeTab is history) */}
+        {activeTab === 'history' && (
+          <div className="ml-auto mt-2 md:mt-0">
+            <select
+              value={historyFilter}
+              onChange={(e) => setHistoryFilter(e.target.value as 'all' | 'in' | 'out')}
+              className="pl-3 pr-8 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none transition-all cursor-pointer appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2YjcyODAiIHN0cm9rZS13aWR0aD0iMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0ibTYgOSA2IDYgNi02Ii8+PC9zdmc+')] bg-no-repeat bg-[position:right_0.75rem_center] bg-[length:16px_16px]"
+            >
+              <option value="all">ทั้งหมด (All)</option>
+              <option value="in">รับเข้า (IN)</option>
+              <option value="out">เบิกจ่าย (OUT)</option>
+            </select>
+          </div>
+        )}
+
         {/* Search Input */}
-        <div className="relative ml-auto w-full md:w-64 mt-2 md:mt-0">
+        <div className={`relative ${activeTab === 'history' ? 'ml-2' : 'ml-auto'} w-full md:w-64 mt-2 md:mt-0`}>
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <Search className="h-4 w-4 text-gray-400" />
           </span>
@@ -1085,7 +1117,19 @@ function Inventory() {
                           {move.reason}
                         </td>
                         <td className="px-6 py-4 text-gray-500 max-w-xs truncate">
-                          {move.reference_doc || '-'}
+                          {move.document_url ? (
+                            <a
+                              href={move.document_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-primary hover:underline font-medium"
+                            >
+                              <FileText className="w-3.5 h-3.5 shrink-0" />
+                              ดูเอกสาร
+                            </a>
+                          ) : (
+                            move.reference_doc || '-'
+                          )}
                         </td>
                         <td className="px-6 py-4 text-gray-500 whitespace-nowrap">
                           {move.by}
@@ -1686,7 +1730,3 @@ function Inventory() {
     </AppLayout>
   )
 }
-
-
-
-

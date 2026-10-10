@@ -360,6 +360,7 @@ export type Database = {
           change: number
           created_at: string | null
           created_by: string | null
+          document_url: string | null
           id: string
           product_id: string | null
           reason: string
@@ -370,6 +371,7 @@ export type Database = {
           change: number
           created_at?: string | null
           created_by?: string | null
+          document_url?: string | null
           id?: string
           product_id?: string | null
           reason: string
@@ -380,6 +382,7 @@ export type Database = {
           change?: number
           created_at?: string | null
           created_by?: string | null
+          document_url?: string | null
           id?: string
           product_id?: string | null
           reason?: string

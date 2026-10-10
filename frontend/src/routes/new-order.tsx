@@ -8,9 +8,10 @@ import {
   AlertCircle,
   CheckCircle2,
   FileText,
+  Upload,
   X
 } from 'lucide-react'
-import { getProducts, updateProduct, generateNewPoNumber, type Product } from '../services/inventory'
+import { getProducts, updateProduct, generateNewPoNumber, uploadPoDocument, type Product } from '../services/inventory'
 
 export const Route = createFileRoute('/new-order')({
   beforeLoad: ({ context }) => {
@@ -29,6 +30,13 @@ function NewOrderPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [cart, setCart] = useState<{ product: Product; addQty: number }[]>([])
   const [referenceDoc, setReferenceDoc] = useState('')
+  const [documentFile, setDocumentFile] = useState<File | null>(null)
+  const [lastOrder, setLastOrder] = useState<{
+    poNumber: string;
+    items: { product: Product; addQty: number }[];
+    date: Date;
+    total: number;
+  } | null>(null)
   
   const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -95,6 +103,17 @@ function NewOrderPage() {
     setIsSubmitting(true)
     let hasError = false
 
+    let documentUrl: string | undefined
+    if (documentFile) {
+      const uploadRes = await uploadPoDocument(documentFile, referenceDoc.trim() || 'PO')
+      if (!uploadRes.success) {
+        showToast(`เกิดข้อผิดพลาดในการอัปโหลดเอกสาร: ${uploadRes.error}`, 'error')
+        setIsSubmitting(false)
+        return
+      }
+      documentUrl = uploadRes.url
+    }
+
     for (const item of cart) {
       const updatedProduct = {
         ...item.product,
@@ -103,9 +122,10 @@ function NewOrderPage() {
       }
 
       const res = await updateProduct(
-        item.product.sku, 
-        updatedProduct, 
-        'รับสินค้าเข้าคลัง (เพิ่มสต็อก)'
+        item.product.sku,
+        updatedProduct,
+        'รับสินค้าเข้าคลัง (เพิ่มสต็อก)',
+        documentUrl
       )
 
       if (!res.success) {
@@ -117,15 +137,30 @@ function NewOrderPage() {
 
     if (!hasError) {
       showToast('บันทึกการรับสินค้าเข้าสต็อกเรียบร้อยแล้ว!', 'success')
+      
+      setLastOrder({
+        poNumber: referenceDoc.trim() || 'PO-XXXX',
+        items: [...cart],
+        date: new Date(),
+        total: cart.reduce((sum, item) => sum + (item.product.price * item.addQty), 0)
+      })
+
       setCart([])
+      setDocumentFile(null)
       loadData() // Refresh inventory
+      
+      setTimeout(() => {
+        window.print()
+      }, 500)
     }
     
     setIsSubmitting(false)
   }
 
   return (
-    <AppLayout>
+    <>
+      <div className="print:hidden">
+        <AppLayout>
       {alert && (
         <div className={`fixed top-5 right-5 z-[9999] px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium transition-all ${
           alert.type === 'success' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'
@@ -166,6 +201,23 @@ function NewOrderPage() {
                   readOnly
                   className="w-full bg-gray-50 border border-gray-200 text-gray-500 font-medium text-sm rounded-xl px-3 py-2.5 outline-none cursor-not-allowed"
                 />
+              </div>
+
+              {/* Document Upload */}
+              <div className="mb-6">
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                  เอกสารใบสั่งซื้อ / ใบส่งของ
+                </label>
+                <label className="flex items-center gap-2 w-full bg-gray-50 border border-dashed border-gray-200 text-gray-500 font-medium text-sm rounded-xl px-3 py-2.5 cursor-pointer hover:bg-gray-100 transition-colors">
+                  <Upload className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{documentFile ? documentFile.name : 'เลือกไฟล์เอกสาร'}</span>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                  />
+                </label>
               </div>
 
               {/* Cart Items */}
@@ -332,7 +384,83 @@ function NewOrderPage() {
           </div>
 
         </div>
+        </div>
+      </AppLayout>
       </div>
-    </AppLayout>
+
+      {/* Printable A4 PO Document */}
+      {lastOrder && (
+        <div className="hidden print:block w-[210mm] min-h-[297mm] mx-auto bg-white text-black p-10 font-sans" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
+          <div className="flex justify-between items-start mb-8 border-b pb-6 border-gray-200">
+            <div>
+              <h1 className="text-3xl font-black text-gray-900 tracking-tight">ใบสั่งซื้อ / รับเข้าสินค้า</h1>
+              <p className="text-sm text-gray-500 font-medium mt-1">PURCHASE ORDER (PO)</p>
+              <div className="mt-4">
+                <div className="font-bold text-gray-900 text-lg">YMR Scooter CHONBURI</div>
+                <div className="text-sm text-gray-600 mt-1">ชลบุรี ประเทศไทย</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-500 font-semibold mb-1">เลขที่เอกสาร / PO No.</div>
+              <div className="text-xl font-bold text-gray-900">{lastOrder.poNumber}</div>
+              <div className="text-sm text-gray-500 font-semibold mt-4 mb-1">วันที่ / Date</div>
+              <div className="text-base font-medium text-gray-900">
+                {lastOrder.date.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </div>
+            </div>
+          </div>
+
+          <table className="w-full text-left border-collapse mb-8">
+            <thead>
+              <tr className="border-b-2 border-gray-900">
+                <th className="py-3 font-bold text-gray-900 w-16">ลำดับ</th>
+                <th className="py-3 font-bold text-gray-900">รายการสินค้า (SKU)</th>
+                <th className="py-3 font-bold text-gray-900 text-right w-24">ราคา/หน่วย</th>
+                <th className="py-3 font-bold text-gray-900 text-center w-24">จำนวน</th>
+                <th className="py-3 font-bold text-gray-900 text-right w-32">จำนวนเงิน</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lastOrder.items.map((item, index) => (
+                <tr key={index} className="border-b border-gray-200">
+                  <td className="py-3 text-gray-700">{index + 1}</td>
+                  <td className="py-3">
+                    <div className="font-bold text-gray-900">{item.product.name}</div>
+                    <div className="text-xs text-gray-500">{item.product.sku}</div>
+                  </td>
+                  <td className="py-3 text-right text-gray-700 font-medium">฿{item.product.price.toLocaleString()}</td>
+                  <td className="py-3 text-center font-bold text-gray-900">{item.addQty}</td>
+                  <td className="py-3 text-right font-bold text-gray-900">฿{(item.product.price * item.addQty).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-b-2 border-gray-900 bg-gray-50/50">
+                <td colSpan={4} className="py-4 text-right font-bold text-gray-900 pr-6">รวมทั้งสิ้น / Grand Total</td>
+                <td className="py-4 text-right font-black text-gray-900 text-lg">฿{lastOrder.total.toLocaleString()}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div className="flex justify-between items-end mt-24 pt-8">
+            <div className="text-center w-48">
+              <div className="border-b border-gray-400 mb-2"></div>
+              <div className="text-sm font-semibold text-gray-900">ผู้จัดทำ / Prepared By</div>
+              <div className="text-xs text-gray-500 mt-1">วันที่ / Date: _____/_____/_____</div>
+            </div>
+            <div className="text-center w-48">
+              <div className="border-b border-gray-400 mb-2"></div>
+              <div className="text-sm font-semibold text-gray-900">ผู้อนุมัติ / Authorized By</div>
+              <div className="text-xs text-gray-500 mt-1">วันที่ / Date: _____/_____/_____</div>
+            </div>
+            <div className="text-center w-48">
+              <div className="border-b border-gray-400 mb-2"></div>
+              <div className="text-sm font-semibold text-gray-900">ผู้รับของ / Received By</div>
+              <div className="text-xs text-gray-500 mt-1">วันที่ / Date: _____/_____/_____</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

@@ -27,7 +27,7 @@ export default function Sidebar() {
   const menuItems = isStaff ? staffMenuItems : adminMenuItems
 
   return (
-    <aside className="w-64 shrink-0 bg-primary text-white flex flex-col sticky top-0 h-screen p-4 text-base">
+    <aside className="w-64 shrink-0 bg-primary text-white flex flex-col sticky top-0 h-screen p-4 text-base print:hidden">
       {/* Logo */}
       <div className="flex items-center gap-3 mb-10 px-1">
         <img

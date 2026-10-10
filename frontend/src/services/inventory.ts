@@ -32,6 +32,7 @@ export interface StockMovement {
   reason: string
   by: string
   reference_doc?: string
+  document_url?: string
 }
 
 export interface Brand {
@@ -214,7 +215,19 @@ export const getMovements = async (): Promise<StockMovement[]> => {
     reason: m.reason,
     by: (m.users as any)?.full_name || (m.users as any)?.email || 'Unknown',
     reference_doc: m.reference_doc || '',
+    document_url: m.document_url || undefined,
   }))
+}
+
+export const uploadPoDocument = async (file: File, poNumber: string): Promise<{ success: boolean; url?: string; error?: string }> => {
+  const ext = file.name.split('.').pop()
+  const path = `${poNumber}-${Date.now()}.${ext}`
+
+  const { error } = await supabase.storage.from('po-documents').upload(path, file)
+  if (error) return { success: false, error: error.message }
+
+  const { data } = supabase.storage.from('po-documents').getPublicUrl(path)
+  return { success: true, url: data.publicUrl }
 }
 
 export const addCategory = async (category: Category): Promise<{ success: boolean; error?: string }> => {
@@ -287,7 +300,7 @@ export const addProduct = async (product: Product): Promise<{ success: boolean; 
   return { success: true }
 }
 
-export const updateProduct = async (oldSku: string, product: Product, customReason?: string): Promise<{ success: boolean; error?: string }> => {
+export const updateProduct = async (oldSku: string, product: Product, customReason?: string, documentUrl?: string): Promise<{ success: boolean; error?: string }> => {
   const { data: sessionData } = await supabase.auth.getSession()
   const userId = sessionData.session?.user.id
 
@@ -319,7 +332,8 @@ export const updateProduct = async (oldSku: string, product: Product, customReas
       balance: product.qty,
       reason: customReason ? customReason : (qtyDiff > 0 ? 'แก้ไขจำนวนสต็อก (ปรับเพิ่ม)' : 'แก้ไขจำนวนสต็อก (ปรับลด)'),
       created_by: userId,
-      reference_doc: product.reference_doc
+      reference_doc: product.reference_doc,
+      document_url: documentUrl
     })
     if (moveError) return { success: false, error: moveError.message }
   } else if (oldProd.price !== product.price) {
@@ -491,3 +505,36 @@ export const deleteAllModelsForBrand = async (brandId: string): Promise<{ succes
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
+
+export const receiveStock = async (items: { id: string; qty: number }[], poNumber: string): Promise<{ success: boolean; error?: string }> => {
+  const { data: userData } = await supabase.auth.getSession()
+  const user = userData.session?.user
+
+  try {
+    for (const item of items) {
+      // Get current stock
+      const { data: prod } = await supabase.from('products').select('id, qty, sku, name').eq('id', item.id).single()
+      if (!prod) continue
+      
+      const newQty = (prod.qty || 0) + item.qty
+      
+      // Update stock
+      await supabase.from('products').update({ qty: newQty }).eq('id', item.id)
+      
+      // Add movement
+      await supabase.from('stock_movements').insert({
+        product_id: prod.id,
+        change: item.qty,
+        balance: newQty,
+        reason: 'Receive Stock',
+        reference_doc: poNumber,
+        created_by: user?.id
+      })
+    }
+    return { success: true }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
+
