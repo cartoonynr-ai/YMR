@@ -94,6 +94,104 @@ export const getProducts = async (): Promise<Product[]> => {
   }))
 }
 
+export const getProductByBarcode = async (barcode: string): Promise<{ data?: Product; error?: string; code?: string }> => {
+  const cleanBarcode = barcode.trim()
+  if (!cleanBarcode) return { error: 'Barcode is required', code: 'INVALID_BARCODE' }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      categories (name)
+    `)
+    .eq('is_deleted', false)
+    .eq('barcode', cleanBarcode)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') { // PostgREST code for 0 rows returned
+      return { error: 'Product not found', code: 'BARCODE_NOT_FOUND' }
+    }
+    return { error: error.message, code: 'DB_ERROR' }
+  }
+
+  if (!data) return { error: 'Product not found', code: 'BARCODE_NOT_FOUND' }
+
+  return {
+    data: {
+      id: data.id,
+      name: data.name,
+      sku: data.sku,
+      barcode: data.barcode || '',
+      brand: data.brand || '',
+      compatibility: data.compatibility || '',
+      category: (data.categories as any)?.name || '',
+      category_id: data.category_id || undefined,
+      price: data.price,
+      qty: data.qty,
+      threshold: data.threshold,
+      image_url: data.image_url || undefined,
+    }
+  }
+}
+
+export const assignBarcode = async (productId: string, newBarcode: string): Promise<{ success: boolean; error?: string; conflictProduct?: string }> => {
+  const { data: sessionData } = await supabase.auth.getSession()
+  const userId = sessionData.session?.user.id
+  
+  if (!userId) {
+    return { success: false, error: 'User not authenticated' }
+  }
+
+  // 1. Check if barcode is already used
+  const { data: existing, error: _error } = await supabase
+    .from('products')
+    .select('id, name')
+    .eq('barcode', newBarcode)
+    .eq('is_deleted', false)
+    .single()
+    
+  if (existing && existing.id !== productId) {
+    return { success: false, error: 'Barcode already in use', conflictProduct: existing.name }
+  }
+  
+  // 2. Get current product info for audit log
+  const { data: product, error: prodError } = await supabase
+    .from('products')
+    .select('barcode, name')
+    .eq('id', productId)
+    .single()
+    
+  if (prodError || !product) {
+    return { success: false, error: 'Product not found' }
+  }
+  
+  const oldBarcode = product.barcode || ''
+
+  // 3. Update barcode
+  const { error: updateError } = await supabase
+    .from('products')
+    .update({ barcode: newBarcode })
+    .eq('id', productId)
+    
+  if (updateError) {
+    return { success: false, error: updateError.message }
+  }
+  
+  // 4. Record audit log
+  await supabase.from('audit_logs' as any).insert({
+    user_id: userId,
+    action: 'UPDATE_BARCODE',
+    entity_type: 'product',
+    entity_id: productId,
+    old_value: oldBarcode,
+    new_value: newBarcode,
+    details: `Updated barcode for ${product.name} from ${oldBarcode} to ${newBarcode}`
+  })
+  
+  return { success: true }
+}
+
 export const getMovements = async (): Promise<StockMovement[]> => {
   const { data, error } = await supabase
     .from('stock_movements')

@@ -318,6 +318,7 @@ function Inventory() {
       }
 
       if (term) {
+        const originalTerm = searchTerm.trim()
         result = result.filter(
           (p) =>
             p.name.toLowerCase().includes(term) ||
@@ -325,7 +326,11 @@ function Inventory() {
             p.barcode.toLowerCase().includes(term) ||
             p.brand.toLowerCase().includes(term) ||
             p.compatibility.toLowerCase().includes(term)
-        )
+        ).sort((a, b) => {
+          const aExact = a.barcode === originalTerm ? 1 : 0
+          const bExact = b.barcode === originalTerm ? 1 : 0
+          return bExact - aExact
+        })
       }
       return result
     }

@@ -1,11 +1,13 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
-import { Plus, Minus, CreditCard, X, Trash2, Printer, Package } from 'lucide-react'
+import { Plus, Minus, CreditCard, X, Trash2, Printer, Package, ScanLine } from 'lucide-react'
 import { getProducts, type Product } from '../services/inventory'
 import { createOrder } from '../services/orders'
 import generatePayload from 'promptpay-qr'
 import QRCode from 'react-qr-code'
 import Sidebar from '../components/layout/Sidebar'
+import BarcodeScannerModal from '../components/pos/BarcodeScannerModal'
+import BarcodeNotFoundDialog from '../components/pos/BarcodeNotFoundDialog'
 
 export const Route = createFileRoute('/pos')({
   beforeLoad: ({ context }) => {
@@ -21,7 +23,7 @@ export const Route = createFileRoute('/pos')({
 
 function PosPage() {
   const [barcode, setBarcode] = useState('')
-  const [items, setItems] = useState<{ id: string; name: string; price: number; qty: number; stock: number }[]>([])
+  const [items, setItems] = useState<{ id: string; name: string; price: number; qty: number; stock: number; barcode?: string }[]>([])
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash')
   const [cashReceived, setCashReceived] = useState<string>('0')
   
@@ -30,6 +32,9 @@ function PosPage() {
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'error' | 'success'>('error')
   const [showReceipt, setShowReceipt] = useState<string | null>(null)
+  
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
+  const [notFoundBarcode, setNotFoundBarcode] = useState('')
 
   const loadData = async () => {
     const products = await getProducts()
@@ -45,22 +50,35 @@ function PosPage() {
     setToastType(type)
     setTimeout(() => setToastMessage(''), 3000)
   }
-
-  const handleBarcodeSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && barcode.trim()) {
-      const searchLower = barcode.trim().toLowerCase()
-      const found = inventory.find(p => p.sku.toLowerCase() === searchLower || p.name.toLowerCase().includes(searchLower))
-      
-      if (found) {
-        addFromRecent({ id: found.sku, name: found.name, price: found.price, stock: found.qty })
-        setBarcode('')
-      } else {
-        showToast('ไม่พบสินค้าในระบบ', 'error')
-      }
+  
+  const processScan = (searchStr: string) => {
+    if (!searchStr.trim()) return
+    const searchLower = searchStr.trim().toLowerCase()
+    const cleanSearchStr = searchStr.trim()
+    
+    // 1. ค้นหาแบบ Barcode ตรงเป๊ะ (Exact match) ก่อนเสมอ
+    let found = inventory.find(p => p.barcode === cleanSearchStr)
+    
+    // 2. ถ้าไม่เจอ ค่อยหาจาก SKU (ตรงเป๊ะ) หรือ ชื่อที่มีคำนั้นรวมอยู่ (Includes)
+    if (!found) {
+      found = inventory.find(p => p.sku.toLowerCase() === searchLower || p.name.toLowerCase().includes(searchLower))
+    }
+    
+    if (found) {
+      addFromRecent({ id: found.sku, name: found.name, price: found.price, stock: found.qty, barcode: found.barcode })
+      setBarcode('')
+    } else {
+      setNotFoundBarcode(cleanSearchStr)
     }
   }
 
-  const addFromRecent = (product: {id: string, name: string, price: number, stock: number}) => {
+  const handleBarcodeSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && barcode.trim()) {
+      processScan(barcode)
+    }
+  }
+
+  const addFromRecent = (product: {id: string, name: string, price: number, stock: number, barcode?: string}) => {
     if (product.stock <= 0) {
       showToast('สินค้าหมดสต็อก (Out of stock)', 'error')
       return
@@ -164,6 +182,13 @@ function PosPage() {
       setIsSaving(false)
     }
   }
+
+  const searchQuery = barcode.trim().toLowerCase();
+  const searchResults = searchQuery ? inventory.filter(p => 
+    p.sku.toLowerCase().includes(searchQuery) || 
+    p.name.toLowerCase().includes(searchQuery) ||
+    (p.barcode && p.barcode.toLowerCase().includes(searchQuery))
+  ) : [];
 
   return (
     <div className="flex h-screen bg-[#F3F4F6] text-gray-900 font-sans">
@@ -274,47 +299,60 @@ function PosPage() {
             <div className="p-6 md:p-8 border-b border-gray-100">
               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">SCANBAR CODE / SEARCH PRODUCT</label>
               
-              <div className="relative">
-                <input 
-                  type="text" 
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  onKeyDown={handleBarcodeSubmit}
-                  placeholder="[ | | | | | | | | ] e.g. 8850001000017"
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-[#00b6d5] px-4 py-3 outline-none transition-all placeholder:text-gray-400 font-medium"
-                />
-                
-                {barcode.trim() && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] z-20 max-h-60 overflow-y-auto">
-                    {inventory.filter(p => p.sku.toLowerCase().includes(barcode.trim().toLowerCase()) || p.name.toLowerCase().includes(barcode.trim().toLowerCase())).length > 0 ? (
-                      <div className="p-1">
-                        {inventory.filter(p => p.sku.toLowerCase().includes(barcode.trim().toLowerCase()) || p.name.toLowerCase().includes(barcode.trim().toLowerCase())).map(product => (
-                          <button
-                            key={product.sku}
-                            onClick={() => { addFromRecent({id: product.sku, name: product.name, price: product.price, stock: product.qty}); setBarcode(''); }}
-                            className="w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors border border-transparent"
-                          >
-                            <div className="w-8 h-8 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 shrink-0">
-                              <Package className="w-4 h-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-sm font-bold text-gray-900 truncate">{product.name}</div>
-                              <div className="text-[10px] text-gray-900 font-medium">SKU: {product.sku}</div>
-                            </div>
-                            <div className="ml-auto text-right shrink-0">
-                              <div className="text-sm font-black text-gray-900">฿{product.price.toLocaleString()}</div>
-                              <div className={`text-[9px] font-bold ${product.qty > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{product.qty} in stock</div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-4 text-center text-sm text-gray-500 font-medium">
-                        ไม่พบสินค้าที่ค้นหา
-                      </div>
-                    )}
-                  </div>
-                )}
+              <div className="relative flex gap-2">
+                <div className="relative flex-1">
+                  <input 
+                    type="text" 
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    onKeyDown={handleBarcodeSubmit}
+                    placeholder="[ | | | | | | | | ] e.g. 8850001000017"
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-2 focus:ring-[#00b6d5] px-4 py-3 outline-none transition-all placeholder:text-gray-400 font-medium"
+                  />
+                  
+                  {searchQuery && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] z-20 max-h-60 overflow-y-auto">
+                      {searchResults.length > 0 ? (
+                        <div className="p-1">
+                          {searchResults.map(product => (
+                            <button
+                              key={product.sku}
+                              onClick={() => { addFromRecent({id: product.sku, name: product.name, price: product.price, stock: product.qty, barcode: product.barcode}); setBarcode(''); }}
+                              className="w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 rounded-lg transition-colors border border-transparent"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 shrink-0">
+                                <Package className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-bold text-gray-900 truncate">{product.name}</div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <div className="text-[10px] text-gray-500 font-medium">
+                                    SKU: {product.sku} {product.barcode ? `| Barcode: ${product.barcode}` : <span className="text-gray-400 italic">| ไม่มีบาร์โค้ด</span>}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="ml-auto text-right shrink-0">
+                                <div className="text-sm font-black text-gray-900">฿{product.price.toLocaleString()}</div>
+                                <div className={`text-[9px] font-bold ${product.qty > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{product.qty} in stock</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-4 text-center text-sm text-gray-500 font-medium">
+                          ไม่พบสินค้าที่ค้นหา
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => setIsScannerOpen(true)}
+                  aria-label="สแกนด้วยกล้อง"
+                  className="p-3 bg-gray-100 text-gray-600 hover:bg-[#00b6d5] hover:text-white rounded-xl transition-colors border border-gray-200 shrink-0"
+                >
+                  <ScanLine className="w-5 h-5" />
+                </button>
               </div>
               
               <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide">
@@ -322,13 +360,18 @@ function PosPage() {
                 {inventory.filter(p => p.qty > 0).slice(0, 4).map(product => (
                   <button
                     key={product.sku}
-                    onClick={() => addFromRecent({id: product.sku, name: product.name, price: product.price, stock: product.qty})}
-                    className="px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-[11px] font-bold transition-colors border border-gray-200 shrink-0 flex items-center gap-2"
+                    onClick={() => addFromRecent({id: product.sku, name: product.name, price: product.price, stock: product.qty, barcode: product.barcode})}
+                    className="px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-[11px] font-bold transition-colors border border-gray-200 shrink-0 flex flex-col items-start gap-1"
                   >
-                    <div className="w-5 h-5 rounded bg-white border border-gray-200 flex items-center justify-center text-gray-400">
-                      <Package className="w-3 h-3" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded bg-white border border-gray-200 flex items-center justify-center text-gray-400">
+                        <Package className="w-3 h-3" />
+                      </div>
+                      <span>{product.name}</span>
                     </div>
-                    {product.name}
+                    <div className="text-[10px] text-gray-500 font-medium">
+                      SKU: {product.sku} {product.barcode ? `| Barcode: ${product.barcode}` : <span className="text-gray-400 italic">| ไม่มีบาร์โค้ด</span>}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -357,7 +400,9 @@ function PosPage() {
                           <div>
                             <div className="font-bold text-gray-900">{item.name}</div>
                             <div className="flex items-center gap-2 mt-1">
-                              <div className="text-[11px] text-gray-500 font-medium">{item.id}</div>
+                              <div className="text-[11px] text-gray-500 font-medium">
+                                SKU: {item.id} {item.barcode ? `| Barcode: ${item.barcode}` : <span className="text-gray-400 italic">| ไม่มีบาร์โค้ด</span>}
+                              </div>
                               <span className={`text-[9px] px-1.5 py-0.5 rounded-sm font-bold ${item.qty >= item.stock ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
                                 {item.stock} in stock
                               </span>
@@ -538,6 +583,28 @@ function PosPage() {
           </div>
         </div>
         </div>
+        <BarcodeScannerModal 
+          isOpen={isScannerOpen} 
+          onClose={() => setIsScannerOpen(false)} 
+          onScan={processScan} 
+        />
+        <BarcodeNotFoundDialog
+          isOpen={!!notFoundBarcode}
+          barcode={notFoundBarcode}
+          inventory={inventory}
+          onClose={() => setNotFoundBarcode('')}
+          onSuccess={(product) => {
+            // Update inventory state with the new barcode
+            const newInventory = inventory.map(p => p.id === product.id ? product : p);
+            setInventory(newInventory);
+            
+            // Add to cart
+            addFromRecent({ id: product.sku, name: product.name, price: product.price, stock: product.qty });
+            setNotFoundBarcode('');
+            setBarcode('');
+            showToast('ผูกบาร์โค้ดสำเร็จและเพิ่มลงตะกร้าแล้ว', 'success');
+          }}
+        />
       </main>
     </div>
   )
