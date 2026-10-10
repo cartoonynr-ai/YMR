@@ -28,10 +28,12 @@ import {
   addBrand,
   updateBrand,
   deleteBrand,
+  clearBrandFromProducts,
   getVehicleModels,
   addVehicleModel,
   updateVehicleModel,
   deleteVehicleModel,
+  deleteAllModelsForBrand,
   type Product,
   type Category,
   type StockMovement,
@@ -135,40 +137,21 @@ function Inventory() {
       }
     })
 
-    // 3. Merge products text fields
+    // 3. Calculate product counts for models
     products.forEach(p => {
-      if (!p.brand) return
-      const bName = p.brand.trim()
+      if (!p.brand || !p.compatibility) return
+      const bName = p.brand.trim().toLowerCase()
+      const brandObj = Array.from(brandsMap.values()).find(br => br.name.toLowerCase() === bName)
       
-      // Try to find if this brand name already exists in DB brands
-      let brandObj = Array.from(brandsMap.values()).find(br => br.name.toLowerCase() === bName.toLowerCase())
-      
-      if (!brandObj) {
-        const tempId = bName.toUpperCase()
-        if (!brandsMap.has(tempId)) {
-          brandsMap.set(tempId, { id: tempId, name: bName, modelsCount: 0, isDb: false, modelsMap: new Map(), models: [] })
-        }
-        brandObj = brandsMap.get(tempId)!
+      if (brandObj) {
+        const compats = p.compatibility.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+        compats.forEach(modelName => {
+          const modObj = Array.from(brandObj.modelsMap.values()).find(m => m.name.toLowerCase() === modelName)
+          if (modObj) {
+            modObj.productsCount += 1
+          }
+        })
       }
-
-      const compats = p.compatibility ? p.compatibility.split(',').map(s => s.trim()).filter(Boolean) : []
-      compats.forEach(modelName => {
-        // Find existing model by name
-        let modObj = Array.from(brandObj!.modelsMap.values()).find(m => m.name.toLowerCase() === modelName.toLowerCase())
-        if (!modObj) {
-          brandObj!.modelsMap.set(modelName, {
-            id: modelName,
-            name: modelName,
-            type: '-',
-            cc: '-',
-            year: '-',
-            productsCount: 0,
-            isDb: false
-          })
-          modObj = brandObj!.modelsMap.get(modelName)!
-        }
-        modObj.productsCount += 1
-      })
     })
 
     const result = Array.from(brandsMap.values()).map(b => {
@@ -272,7 +255,25 @@ function Inventory() {
   // Reset Product Form when modal closes or editingProduct changes
   useEffect(() => {
     if (editingProduct) {
-      setProductForm(editingProduct)
+      // Check if brand is valid
+      const isValidBrand = dbBrands.some(b => b.name === editingProduct.brand)
+      const validBrandName = isValidBrand ? editingProduct.brand : ''
+      
+      // Check if compatibility is valid for that brand
+      let validCompatName = ''
+      if (isValidBrand && validBrandName) {
+        const brandObj = dbBrands.find(b => b.name === validBrandName)
+        const isValidCompat = dbModels.some(m => m.brand_id === brandObj?.id && m.name === editingProduct.compatibility)
+        if (isValidCompat) {
+          validCompatName = editingProduct.compatibility
+        }
+      }
+
+      setProductForm({
+        ...editingProduct,
+        brand: validBrandName,
+        compatibility: validCompatName
+      })
     } else {
       setProductForm({
         name: '',
@@ -286,7 +287,7 @@ function Inventory() {
         threshold: 5,
       })
     }
-  }, [editingProduct, isProductModalOpen, categories])
+  }, [editingProduct, isProductModalOpen, categories, dbBrands, dbModels])
 
   // Reset Category Form when modal closes or editingCategory changes
   useEffect(() => {
@@ -463,20 +464,44 @@ function Inventory() {
         setIsBrandModalOpen(false)
         setBrandFormName('')
         setDbBrands(await getBrands())
+        if (res.data && res.data.id) {
+          setSelectedBrand(res.data.id)
+        }
       } else {
         setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' })
       }
     }
   }
 
-    const handleDeleteBrand = async (id: string) => {
-    if (window.confirm('ต้องการลบยี่ห้อรถนี้หรือไม่?')) {
-      const res = await deleteBrand(id);
-      if (res.success) {
+  const handleDeleteBrand = async (brandId: string, brandName: string, isDb: boolean) => {
+    if (window.confirm('ต้องการลบยี่ห้อรถนี้หรือไม่? (หากมีสินค้าใช้ชื่อยี่ห้อนี้อยู่ ข้อมูลยี่ห้อในสินค้านั้นจะถูกเปลี่ยนเป็นค่าว่างด้วย)')) {
+      let success = true;
+      let errMsg = '';
+      
+      if (isDb) {
+        const res = await deleteBrand(brandId);
+        if (!res.success) {
+          success = false;
+          errMsg = res.error || 'เกิดข้อผิดพลาดในการลบ';
+        }
+      }
+
+      if (success) {
+        const clearRes = await clearBrandFromProducts(brandName);
+        if (!clearRes.success) {
+          success = false;
+          errMsg = clearRes.error || 'เกิดข้อผิดพลาดในการเคลียร์ข้อมูลสินค้า';
+        }
+      }
+
+      if (success) {
         setAlert({ message: 'ลบยี่ห้อรถสำเร็จ', type: 'success' });
-        setDbBrands(await getBrands());
+        if (selectedBrand === brandId) {
+          setSelectedBrand('');
+        }
+        await loadData();
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' });
+        setAlert({ message: errMsg, type: 'error' });
       }
     }
   }
@@ -513,6 +538,18 @@ function Inventory() {
       const res = await deleteVehicleModel(id);
       if (res.success) {
         setAlert({ message: 'ลบรุ่นรถสำเร็จ', type: 'success' });
+        setDbModels(await getVehicleModels());
+      } else {
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' });
+      }
+    }
+  }
+
+  const handleDeleteAllModelsForBrand = async (brandId: string) => {
+    if (window.confirm('ต้องการลบรุ่นรถ "ทั้งหมด" ในยี่ห้อนี้หรือไม่? (เฉพาะรุ่นรถจะถูกลบ ยี่ห้อจะยังคงอยู่)')) {
+      const res = await deleteAllModelsForBrand(brandId);
+      if (res.success) {
+        setAlert({ message: 'ลบรุ่นรถทั้งหมดสำเร็จ', type: 'success' });
         setDbModels(await getVehicleModels());
       } else {
         setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' });
@@ -698,31 +735,65 @@ function Inventory() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full p-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-900">Brand</h3>
-              <button 
-                onClick={() => {
-                  setEditingBrand(null);
-                  setBrandFormName('');
-                  setIsBrandModalOpen(true);
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded-lg transition-all cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>เพิ่มยี่ห้อรถ</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const currentBrand = computedBrandData.find(b => b.id === selectedBrand);
+                  if (currentBrand && currentBrand.isDb) {
+                    return (
+                      <button 
+                        onClick={() => { 
+                          setEditingBrand(currentBrand as any); 
+                          setBrandFormName(currentBrand.name); 
+                          setIsBrandModalOpen(true); 
+                        }} 
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 hover:text-primary hover:bg-gray-200 text-xs font-medium rounded-lg transition-all cursor-pointer" 
+                        title="แก้ไขยี่ห้อรถ"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        <span>แก้ไขยี่ห้อรถ</span>
+                      </button>
+                    )
+                  }
+                  return null;
+                })()}
+                <button 
+                  onClick={() => {
+                    setEditingBrand(null);
+                    setBrandFormName('');
+                    setIsBrandModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium rounded-lg transition-all cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>เพิ่มยี่ห้อรถ</span>
+                </button>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {computedBrandData.map(brand => (
-                <button
+                <div
                   key={brand.id}
-                  onClick={() => setSelectedBrand(brand.id)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer border ${
+                  className={`group flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all cursor-pointer border ${
                     selectedBrand === brand.id
                       ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm'
                       : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                   }`}
+                  onClick={() => setSelectedBrand(brand.id)}
                 >
-                  {brand.name} <span className="opacity-70 ml-1 text-xs">({brand.modelsCount})</span>
-                </button>
+                  <span>{brand.name} <span className="opacity-70 ml-1 text-xs">({brand.modelsCount})</span></span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteBrand(brand.id, brand.name, brand.isDb);
+                    }}
+                    className={`ml-2 -mr-1 p-0.5 rounded-full hover:bg-rose-100 hover:text-rose-600 transition-colors ${
+                      selectedBrand === brand.id ? 'text-blue-400 hover:text-rose-600' : 'text-gray-400 hover:text-rose-600 opacity-0 group-hover:opacity-100'
+                    }`}
+                    title="ลบยี่ห้อรถ"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -734,16 +805,11 @@ function Inventory() {
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 {(() => {
                   const currentBrand = computedBrandData.find(b => b.id === selectedBrand);
-                  if (currentBrand && currentBrand.isDb) {
+                  if (currentBrand && currentBrand.modelsCount > 0) {
                     return (
-                      <>
-                        <button onClick={() => { setEditingBrand(currentBrand as any); setBrandFormName(currentBrand.name); setIsBrandModalOpen(true); }} className="p-2.5 text-gray-400 hover:text-primary bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer" title="แก้ไขยี่ห้อรถ">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDeleteBrand(currentBrand.id)} className="p-2.5 text-gray-400 hover:text-rose-600 bg-gray-50 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title="ลบยี่ห้อรถ">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </>
+                      <button onClick={() => handleDeleteAllModelsForBrand(currentBrand.id)} className="p-2.5 text-gray-400 hover:text-rose-600 bg-gray-50 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title="ลบรุ่นรถทั้งหมดในยี่ห้อนี้">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     )
                   }
                   return null;
@@ -1357,20 +1423,18 @@ function Inventory() {
                       Brand
                     </label>
                     <div className="relative">
-                      <input
-                        type="text"
-                        list="brand-options"
+                      <select
                         value={productForm.brand || ''}
-                        onChange={(e) => setProductForm((f) => ({ ...f, brand: e.target.value }))}
-                        className="w-full px-3.5 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-white focus:ring-2 focus:ring-primary/20 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-8 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                      />
+                        onChange={(e) => setProductForm((f) => ({ ...f, brand: e.target.value, compatibility: '' }))}
+                        className="w-full px-3.5 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-white focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+                      >
+                        <option value="" disabled>Select Brand</option>
+                        {dbBrands.map(b => (
+                          <option key={b.id} value={b.name}>{b.name}</option>
+                        ))}
+                      </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-10" />
                     </div>
-                    <datalist id="brand-options">
-                      {Array.from(new Set(products.map(p => p.brand).filter(Boolean))).sort().map(brand => (
-                        <option key={brand} value={brand} />
-                      ))}
-                    </datalist>
                   </div>
 
                   {/* Compatibility */}
@@ -1379,20 +1443,21 @@ function Inventory() {
                       Compatibility
                     </label>
                     <div className="relative">
-                      <input
-                        type="text"
-                        list="compat-options"
+                      <select
                         value={productForm.compatibility || ''}
                         onChange={(e) => setProductForm((f) => ({ ...f, compatibility: e.target.value }))}
-                        className="w-full px-3.5 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-white focus:ring-2 focus:ring-primary/20 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-8 [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                      />
+                        disabled={!productForm.brand}
+                        className="w-full px-3.5 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none text-sm transition-all bg-white focus:ring-2 focus:ring-primary/20 appearance-none disabled:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        <option value="" disabled>Select Compatibility</option>
+                        {dbModels
+                          .filter(m => m.brand_id === dbBrands.find(b => b.name === productForm.brand)?.id)
+                          .map(m => (
+                            <option key={m.id} value={m.name}>{m.name}</option>
+                          ))}
+                      </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none z-10" />
                     </div>
-                    <datalist id="compat-options">
-                      {Array.from(new Set(products.map(p => p.compatibility).filter(Boolean))).sort().map(compat => (
-                        <option key={compat} value={compat} />
-                      ))}
-                    </datalist>
                   </div>
                 </div>
 

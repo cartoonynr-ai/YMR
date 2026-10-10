@@ -314,11 +314,11 @@ export const getBrands = async (): Promise<Brand[]> => {
   return data;
 }
 
-export const addBrand = async (name: string): Promise<{ success: boolean; error?: string }> => {
+export const addBrand = async (name: string): Promise<{ success: boolean; error?: string; data?: Brand }> => {
   try {
-    const { error } = await supabase.from('brands').insert({ name });
+    const { data, error } = await supabase.from('brands').insert({ name }).select().single();
     if (error) return { success: false, error: error.message };
-    return { success: true };
+    return { success: true, data };
   } catch (err: any) {
     return { success: false, error: err.message || 'Unknown error occurred' };
   }
@@ -334,6 +334,16 @@ export const deleteBrand = async (id: string): Promise<{ success: boolean; error
   const { error } = await supabase.from('brands').update({ is_deleted: true }).eq('id', id);
   if (error) return { success: false, error: error.message };
   return { success: true };
+}
+
+export const clearBrandFromProducts = async (brandName: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase.from('products').update({ brand: '' }).eq('brand', brandName);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Unknown error occurred' };
+  }
 }
 
 // --- Vehicle Models API ---
@@ -374,6 +384,12 @@ export const updateVehicleModel = async (id: string, model: Partial<VehicleModel
 
 export const deleteVehicleModel = async (id: string): Promise<{ success: boolean; error?: string }> => {
   const { error } = await supabase.from('vehicle_models').update({ is_deleted: true }).eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export const deleteAllModelsForBrand = async (brandId: string): Promise<{ success: boolean; error?: string }> => {
+  const { error } = await supabase.from('vehicle_models').update({ is_deleted: true }).eq('brand_id', brandId);
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
