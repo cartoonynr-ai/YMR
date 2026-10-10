@@ -432,7 +432,7 @@ function Inventory() {
     }
 
     if (editingProduct) {
-      // Edit
+      
       const res = await updateProduct(editingProduct.sku, pData)
       if (res.success) {
         setAlert({ message: 'แก้ไขข้อมูลสินค้าสำเร็จ', type: 'success' })
@@ -442,7 +442,7 @@ function Inventory() {
         setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' })
       }
     } else {
-      // Add
+    
       const res = await addProduct(pData)
       if (res.success) {
         setAlert({ message: 'เพิ่มสินค้าใหม่ลงคลังสำเร็จ', type: 'success' })
@@ -1486,7 +1486,7 @@ function Inventory() {
                     </div>
                   </div>
 
-                  {/* Compatibility */}
+                  
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
                       Compatibility
@@ -1550,7 +1550,7 @@ function Inventory() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Stock QTY */}
+                  
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
                       Stock Quantity
@@ -1566,7 +1566,7 @@ function Inventory() {
                     />
                   </div>
 
-                  {/* Threshold */}
+                  
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1">
                       Threshold

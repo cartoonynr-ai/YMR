@@ -10,17 +10,15 @@ export default function KpiCards() {
       const orders = await getOrders()
       const products = await getProducts()
 
-      // 1. Total Sales (Paid only)
+    
       const totalSales = orders.filter(o => o.status === 'Paid').reduce((sum, o) => sum + o.total, 0)
       
-      // 2. (Removed total orders)
-      
-      // 3. Channel breakdown
+
+
       const lineOrders = orders.filter(o => o.channel === 'LINE').length
       const fbOrders = orders.filter(o => o.channel === 'FB').length
       const posOrders = orders.filter(o => o.channel === 'POS').length
 
-      // 4. Low stock
       const lowStockCount = products.filter(p => p.qty > 0 && p.qty <= (p.threshold || 5)).length
       const outOfStockCount = products.filter(p => p.qty === 0).length
 

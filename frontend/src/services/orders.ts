@@ -158,14 +158,14 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'date'>): Promis
 
     if (orderError) throw orderError
 
-    // 4. Create Order Items and update stock
+   
     for (const item of orderData.items) {
-      // Get product
+    
       const { data: p } = await supabase.from('products').select('*').eq('sku', item.sku).single()
       if (!p) throw new Error(`ไม่พบสินค้า SKU: ${item.sku}`)
       if (p.qty < item.qty) throw new Error(`สินค้า ${p.name} มีสต็อกไม่เพียงพอ (เหลือ ${p.qty})`)
 
-      // Insert Order Item
+
       await supabase.from('order_items').insert({
         order_id: order.id,
         product_id: p.id,
@@ -173,15 +173,16 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'date'>): Promis
         unit_price: item.price
       })
 
-      // Update product stock
+    
       await supabase.from('products').update({ qty: p.qty - item.qty }).eq('id', p.id)
 
-      // Log movement
+ 
       await supabase.from('stock_movements').insert({
         product_id: p.id,
         change: -item.qty,
         balance: p.qty - item.qty,
         reason: `Sold via ${orderData.channel} (${orderNumber})`,
+        reference_doc: orderNumber,
         created_by: userId
       })
     }
@@ -206,22 +207,26 @@ export const cancelOrder = async (orderId: string, reason: string): Promise<{ su
   const { data: sessionData } = await supabase.auth.getSession()
   const userId = sessionData.session?.user?.id
 
-  // Get order items
+
+  const { data: orderRow } = await supabase.from('orders').select('order_number').eq('id', orderId).single()
+  const orderNumber = orderRow?.order_number
+
   const { data: items } = await supabase.from('order_items').select('*, products(*)').eq('order_id', orderId)
-  
+
   if (items) {
     for (const item of items) {
       const p = item.products
       if (p) {
-        // Return stock
+
         await supabase.from('products').update({ qty: p.qty + item.qty }).eq('id', p.id)
-        
-        // Log movement
+
+
         await supabase.from('stock_movements').insert({
           product_id: p.id,
           change: item.qty,
           balance: p.qty + item.qty,
-          reason: 'Cancelled Order',
+          reason: `Cancelled Order (${orderNumber})`,
+          reference_doc: orderNumber,
           created_by: userId
         })
       }
