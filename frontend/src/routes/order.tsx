@@ -12,7 +12,7 @@ import {
   CheckCircle,
   Ban
 } from 'lucide-react'
-import { getProducts, type Product } from '../services/inventory'
+import { getProducts, formatDatabaseError, type Product } from '../services/inventory'
 import { searchAddressByZipcode } from 'thai-address-database'
 import { getOrders, createOrder, cancelOrder, markOrderAsPaid, type Order } from '../services/orders'
 
@@ -251,7 +251,7 @@ function OrderPage() {
       setSelectedAddressId(1)
       await loadData()
     } else {
-      showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง')
+      showToast(formatDatabaseError(result.error, 'เกิดข้อผิดพลาดในการบันทึกคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง'))
     }
     } finally {
       setIsSaving(false)
@@ -267,7 +267,7 @@ function OrderPage() {
       setCancelReasonStr('')
       await loadData()
     } else {
-      showToast(result.error || 'เกิดข้อผิดพลาดในการยกเลิกคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง')
+      showToast(formatDatabaseError(result.error, 'เกิดข้อผิดพลาดในการยกเลิกคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง'))
     }
   }
 
@@ -278,7 +278,7 @@ function OrderPage() {
       showToast(`ยืนยันการชำระเงินสำหรับคำสั่งซื้อ ${orderIdDisplay} สำเร็จ`, 'success')
       await loadData()
     } else {
-      showToast(result.error || 'เกิดข้อผิดพลาดในการยืนยันการชำระเงิน กรุณาลองใหม่อีกครั้ง')
+      showToast(formatDatabaseError(result.error, 'เกิดข้อผิดพลาดในการยืนยันการชำระเงิน กรุณาลองใหม่อีกครั้ง'))
     }
   }
 

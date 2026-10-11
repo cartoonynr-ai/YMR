@@ -35,6 +35,7 @@ import {
   updateVehicleModel,
   deleteVehicleModel,
   deleteAllModelsForBrand,
+  formatDatabaseError,
   type Product,
   type Category,
   type StockMovement,
@@ -230,6 +231,41 @@ function Inventory() {
     if (!productForm.sku || !!editingProduct) return false; // Cannot edit SKU
     return products.some(p => p.sku === productForm.sku);
   }, [productForm.sku, editingProduct, products]);
+
+  // Real-time Brand Duplicate Validation
+  const isBrandDuplicate = useMemo(() => {
+    const brandTrim = brandFormName.trim().toLowerCase();
+    if (!brandTrim) return false;
+    return dbBrands.some(b => 
+      b.name.trim().toLowerCase() === brandTrim && 
+      (!editingBrand || b.id !== editingBrand.id)
+    );
+  }, [brandFormName, editingBrand, dbBrands]);
+
+  // Real-time Vehicle Model Duplicate Validation
+  const isModelDuplicate = useMemo(() => {
+    const modelTrim = (modelForm.name || '').trim().toLowerCase();
+    if (!modelTrim || !modelForm.brand_id) return false;
+    return dbModels.some(m => 
+      m.brand_id === modelForm.brand_id && 
+      m.name.trim().toLowerCase() === modelTrim &&
+      (!editingModel || m.id !== editingModel.id)
+    );
+  }, [modelForm.name, modelForm.brand_id, editingModel, dbModels]);
+
+  // Real-time Category Duplicate Validation
+  const isCategoryDuplicate = useMemo(() => {
+    const nameTrim = (categoryForm.name || '').trim().toLowerCase();
+    const thaiTrim = (categoryForm.thaiName || '').trim().toLowerCase();
+    if (!nameTrim && !thaiTrim) return false;
+    return categories.some(c => {
+      if (editingCategory) {
+        if (editingCategory.id && c.id === editingCategory.id) return false;
+        if (!editingCategory.id && c.name.toLowerCase() === editingCategory.name.toLowerCase()) return false;
+      }
+      return (nameTrim && c.name.toLowerCase() === nameTrim) || (thaiTrim && c.thaiName.toLowerCase() === thaiTrim);
+    });
+  }, [categoryForm.name, categoryForm.thaiName, editingCategory, categories]);
 
   // Load Data
   const loadData = async () => {
@@ -432,24 +468,22 @@ function Inventory() {
     }
 
     if (editingProduct) {
-      
       const res = await updateProduct(editingProduct.sku, pData)
       if (res.success) {
         setAlert({ message: 'แก้ไขข้อมูลสินค้าสำเร็จ', type: 'success' })
         setIsProductModalOpen(false)
         await loadData()
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลสินค้า', type: 'error' })
+        setAlert({ message: formatDatabaseError(res.error, 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลสินค้า'), type: 'error' })
       }
     } else {
-    
       const res = await addProduct(pData)
       if (res.success) {
         setAlert({ message: 'เพิ่มสินค้าใหม่ลงคลังสำเร็จ', type: 'success' })
         setIsProductModalOpen(false)
         await loadData()
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการเพิ่มสินค้าใหม่', type: 'error' })
+        setAlert({ message: formatDatabaseError(res.error, 'เกิดข้อผิดพลาดในการเพิ่มสินค้าใหม่'), type: 'error' })
       }
     }
   }
@@ -458,10 +492,15 @@ function Inventory() {
   const handleSaveBrand = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const brandName = brandFormName
+    const brandName = brandFormName.trim()
 
     if (!brandName) {
       setAlert({ message: 'กรุณาระบุชื่อยี่ห้อรถ', type: 'error' })
+      return
+    }
+
+    if (isBrandDuplicate) {
+      setAlert({ message: 'ชื่อยี่ห้อนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง', type: 'error' })
       return
     }
 
@@ -476,10 +515,7 @@ function Inventory() {
         setDbBrands(updatedBrands)
         setDbModels(updatedModels)
       } else {
-        const errMsg = res.error?.includes('unique constraint') || res.error?.includes('duplicate key')
-          ? 'ชื่อยี่ห้อนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง'
-          : (res.error || 'เกิดข้อผิดพลาดในการแก้ไขยี่ห้อรถ')
-        setAlert({ message: errMsg, type: 'error' })
+        setAlert({ message: formatDatabaseError(res.error, 'เกิดข้อผิดพลาดในการแก้ไขยี่ห้อรถ'), type: 'error' })
       }
     } else {
       // Add
@@ -495,10 +531,7 @@ function Inventory() {
           setSelectedBrand(res.data.id)
         }
       } else {
-        const errMsg = res.error?.includes('unique constraint') || res.error?.includes('duplicate key')
-          ? 'ชื่อยี่ห้อนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง'
-          : (res.error || 'เกิดข้อผิดพลาดในการเพิ่มยี่ห้อรถ')
-        setAlert({ message: errMsg, type: 'error' })
+        setAlert({ message: formatDatabaseError(res.error, 'เกิดข้อผิดพลาดในการเพิ่มยี่ห้อรถ'), type: 'error' })
       }
     }
   }
@@ -512,7 +545,7 @@ function Inventory() {
         const res = await deleteBrand(brandId);
         if (!res.success) {
           success = false;
-          errMsg = res.error || 'เกิดข้อผิดพลาดในการลบยี่ห้อรถ';
+          errMsg = formatDatabaseError(res.error, 'เกิดข้อผิดพลาดในการลบยี่ห้อรถ');
         }
       }
 
@@ -520,7 +553,7 @@ function Inventory() {
         const clearRes = await clearBrandFromProducts(brandName);
         if (!clearRes.success) {
           success = false;
-          errMsg = clearRes.error || 'เกิดข้อผิดพลาดในการปรับปรุงข้อมูลสินค้า';
+          errMsg = formatDatabaseError(clearRes.error, 'เกิดข้อผิดพลาดในการปรับปรุงข้อมูลสินค้า');
         }
       }
 
@@ -542,6 +575,12 @@ function Inventory() {
       setAlert({ message: 'กรุณาระบุข้อมูลรุ่นรถให้ครบถ้วน', type: 'error' });
       return;
     }
+
+    if (isModelDuplicate) {
+      setAlert({ message: 'ชื่อรุ่นรถนี้มีอยู่ในยี่ห้อนี้แล้ว กรุณาตรวจสอบอีกครั้ง', type: 'error' });
+      return;
+    }
+
     if (editingModel) {
       const res = await updateVehicleModel(editingModel.id, modelForm);
       if (res.success) {
@@ -549,7 +588,7 @@ function Inventory() {
         setIsModelModalOpen(false);
         setDbModels(await getVehicleModels());
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลรุ่นรถ', type: 'error' });
+        setAlert({ message: formatDatabaseError(res.error, 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลรุ่นรถ'), type: 'error' });
       }
     } else {
       const res = await addVehicleModel(modelForm);
@@ -558,7 +597,7 @@ function Inventory() {
         setIsModelModalOpen(false);
         setDbModels(await getVehicleModels());
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการเพิ่มรุ่นรถ', type: 'error' });
+        setAlert({ message: formatDatabaseError(res.error, 'เกิดข้อผิดพลาดในการเพิ่มรุ่นรถ'), type: 'error' });
       }
     }
   }
@@ -570,7 +609,7 @@ function Inventory() {
         setAlert({ message: 'ลบรุ่นรถสำเร็จ', type: 'success' });
         setDbModels(await getVehicleModels());
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการลบรุ่นรถ', type: 'error' });
+        setAlert({ message: formatDatabaseError(res.error, 'เกิดข้อผิดพลาดในการลบรุ่นรถ'), type: 'error' });
       }
     }
   }
@@ -582,7 +621,7 @@ function Inventory() {
         setAlert({ message: 'ลบรุ่นรถทั้งหมดสำเร็จ', type: 'success' });
         setDbModels(await getVehicleModels());
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการลบรุ่นรถทั้งหมด', type: 'error' });
+        setAlert({ message: formatDatabaseError(res.error, 'เกิดข้อผิดพลาดในการลบรุ่นรถทั้งหมด'), type: 'error' });
       }
     }
   }
@@ -598,6 +637,11 @@ function Inventory() {
       return
     }
 
+    if (isCategoryDuplicate) {
+      setAlert({ message: 'ชื่อหมวดหมู่นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง', type: 'error' })
+      return
+    }
+
     const cData: Category = {
       name: name.trim(),
       thaiName: thaiName.trim(),
@@ -605,13 +649,13 @@ function Inventory() {
 
     if (editingCategory) {
       // Edit
-      const res = await updateCategory(editingCategory.name, cData)
+      const res = await updateCategory(editingCategory.id || editingCategory.name, cData)
       if (res.success) {
         setAlert({ message: 'แก้ไขหมวดหมู่สำเร็จ', type: 'success' })
         setIsCategoryModalOpen(false)
         await loadData()
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการแก้ไขหมวดหมู่', type: 'error' })
+        setAlert({ message: formatDatabaseError(res.error, 'เกิดข้อผิดพลาดในการแก้ไขหมวดหมู่'), type: 'error' })
       }
     } else {
       // Add
@@ -621,7 +665,7 @@ function Inventory() {
         setIsCategoryModalOpen(false)
         await loadData()
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการเพิ่มหมวดหมู่', type: 'error' })
+        setAlert({ message: formatDatabaseError(res.error, 'เกิดข้อผิดพลาดในการเพิ่มหมวดหมู่'), type: 'error' })
       }
     }
   }
@@ -642,7 +686,7 @@ function Inventory() {
       if (res.success) {
         setAlert({ message: `ลบหมวดหมู่ ${deleteTarget.displayName} สำเร็จ`, type: 'success' })
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการลบหมวดหมู่', type: 'error' })
+        setAlert({ message: formatDatabaseError(res.error, 'เกิดข้อผิดพลาดในการลบหมวดหมู่'), type: 'error' })
       }
     }
 
@@ -1167,7 +1211,7 @@ function Inventory() {
                   </thead>
                   <tbody>
                     {(paginatedData as Category[]).map((cat) => (
-                      <tr key={cat.name} className="border-b border-gray-100 hover:bg-gray-50/40 transition-colors">
+                      <tr key={cat.id || cat.name} className="border-b border-gray-100 hover:bg-gray-50/40 transition-colors">
                         <td className="px-6 py-4 font-semibold text-gray-900">
                           {cat.name}
                         </td>
@@ -1193,7 +1237,7 @@ function Inventory() {
                               onClick={() => {
                                 setDeleteTarget({
                                   type: 'category',
-                                  key: cat.name,
+                                  key: cat.id || cat.name,
                                   displayName: `${cat.name} (${cat.thaiName})`,
                                 })
                                 setIsDeleteModalOpen(true)
@@ -1278,9 +1322,18 @@ function Inventory() {
                   required
                   value={brandFormName}
                   onChange={e => setBrandFormName(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
+                  className={`w-full px-3 py-2 bg-gray-50 border rounded-lg focus:outline-none focus:ring-1 transition-all text-sm ${
+                    isBrandDuplicate
+                      ? 'border-rose-500 text-rose-600 focus:border-rose-500 focus:ring-rose-500'
+                      : 'border-gray-200 focus:border-primary focus:ring-primary'
+                  }`}
                   placeholder="เช่น HONDA, YAMAHA"
                 />
+                {isBrandDuplicate && (
+                  <p className="text-xs text-rose-500 mt-1.5 flex items-center gap-1 font-medium">
+                    <AlertTriangle className="w-3.5 h-3.5" /> ชื่อยี่ห้อนี้มีอยู่ในระบบแล้ว
+                  </p>
+                )}
               </div>
               <div className="pt-4 flex justify-end gap-2">
                 <button
@@ -1292,7 +1345,12 @@ function Inventory() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors"
+                  disabled={isBrandDuplicate}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    isBrandDuplicate
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'text-white bg-primary hover:bg-primary-dark cursor-pointer'
+                  }`}
                 >
                   บันทึก
                 </button>
@@ -1337,9 +1395,18 @@ function Inventory() {
                   required
                   value={modelForm.name || ''}
                   onChange={e => setModelForm({...modelForm, name: e.target.value})}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
+                  className={`w-full px-3 py-2 bg-gray-50 border rounded-lg focus:outline-none focus:ring-1 transition-all text-sm ${
+                    isModelDuplicate
+                      ? 'border-rose-500 text-rose-600 focus:border-rose-500 focus:ring-rose-500'
+                      : 'border-gray-200 focus:border-primary focus:ring-primary'
+                  }`}
                   placeholder="เช่น PCX 160"
                 />
+                {isModelDuplicate && (
+                  <p className="text-xs text-rose-500 mt-1.5 flex items-center gap-1 font-medium">
+                    <AlertTriangle className="w-3.5 h-3.5" /> ชื่อรุ่นรถนี้มีอยู่ในยี่ห้อนี้แล้ว
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">ประเภท</label>
@@ -1381,7 +1448,12 @@ function Inventory() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors"
+                  disabled={isModelDuplicate}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    isModelDuplicate
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'text-white bg-primary hover:bg-primary-dark cursor-pointer'
+                  }`}
                 >
                   บันทึก
                 </button>
@@ -1651,7 +1723,11 @@ function Inventory() {
                     placeholder="Engine Oil, Spark Plugs"
                     value={categoryForm.name || ''}
                     onChange={(e) => setCategoryForm((f) => ({ ...f, name: e.target.value }))}
-                    className="w-full px-3.5 py-2 border rounded-lg focus:border-primary focus:outline-none text-sm transition-all focus:bg-white"
+                    className={`w-full px-3.5 py-2 border rounded-lg focus:outline-none text-sm transition-all focus:bg-white ${
+                      isCategoryDuplicate
+                        ? 'border-rose-500 text-rose-600 focus:border-rose-500'
+                        : 'border-gray-200 focus:border-primary'
+                    }`}
                   />
                 </div>
 
@@ -1666,8 +1742,17 @@ function Inventory() {
                     placeholder="น้ำมันเครื่อง, หัวเทียน"
                     value={categoryForm.thaiName || ''}
                     onChange={(e) => setCategoryForm((f) => ({ ...f, thaiName: e.target.value }))}
-                    className="w-full px-3.5 py-2 border rounded-lg focus:border-primary focus:outline-none text-sm transition-all focus:bg-white"
+                    className={`w-full px-3.5 py-2 border rounded-lg focus:outline-none text-sm transition-all focus:bg-white ${
+                      isCategoryDuplicate
+                        ? 'border-rose-500 text-rose-600 focus:border-rose-500'
+                        : 'border-gray-200 focus:border-primary'
+                    }`}
                   />
+                  {isCategoryDuplicate && (
+                    <p className="text-xs text-rose-500 mt-1.5 flex items-center gap-1 font-medium">
+                      <AlertTriangle className="w-3.5 h-3.5" /> ชื่อหมวดหมู่นี้มีอยู่ในระบบแล้ว
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1682,7 +1767,12 @@ function Inventory() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-medium shadow-sm transition-all cursor-pointer"
+                  disabled={isCategoryDuplicate}
+                  className={`px-5 py-2 rounded-lg text-sm font-medium shadow-sm transition-all ${
+                    isCategoryDuplicate
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-primary hover:bg-primary-dark text-white cursor-pointer'
+                  }`}
                 >
                   Confirm
                 </button>

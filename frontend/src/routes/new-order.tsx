@@ -10,7 +10,7 @@ import {
   FileText,
   X
 } from 'lucide-react'
-import { getProducts, updateProduct, generateNewPoNumber, type Product } from '../services/inventory'
+import { getProducts, updateProduct, generateNewPoNumber, formatDatabaseError, type Product } from '../services/inventory'
 
 export const Route = createFileRoute('/new-order')({
   beforeLoad: ({ context }) => {
@@ -116,7 +116,7 @@ function NewOrderPage() {
 
       if (!res.success) {
         hasError = true
-        showToast(`เกิดข้อผิดพลาดในการปรับปรุงข้อมูล ${item.product.name}: ${res.error || 'กรุณาลองใหม่อีกครั้ง'}`, 'error')
+        showToast(`เกิดข้อผิดพลาดในการปรับปรุงข้อมูล ${item.product.name}: ${formatDatabaseError(res.error, 'กรุณาลองใหม่อีกครั้ง')}`, 'error')
         break // Stop on first error
       }
     }

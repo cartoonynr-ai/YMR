@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { Plus, Minus, CreditCard, X, Trash2, Printer, Package, ScanLine } from 'lucide-react'
-import { getProducts, type Product } from '../services/inventory'
+import { getProducts, formatDatabaseError, type Product } from '../services/inventory'
 import { createOrder } from '../services/orders'
 import generatePayload from 'promptpay-qr'
 import QRCode from 'react-qr-code'
@@ -176,7 +176,7 @@ function PosPage() {
         showToast(`บันทึกการขายสำเร็จ`, 'success')
         setShowReceipt(result.orderNumber || result.orderId?.split('-')[0] || 'SUCCESS')
       } else {
-        showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกการขาย กรุณาลองใหม่อีกครั้ง', 'error')
+        showToast(formatDatabaseError(result.error, 'เกิดข้อผิดพลาดในการบันทึกการขาย กรุณาลองใหม่อีกครั้ง'), 'error')
       }
     } finally {
       setIsSaving(false)

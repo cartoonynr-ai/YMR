@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { formatDatabaseError } from './inventory'
 
 export interface OrderItem {
   id?: string
@@ -189,7 +190,7 @@ export const createOrder = async (orderData: Omit<Order, 'id' | 'date'>): Promis
 
     return { success: true, orderId: order.id, orderNumber: order.order_number }
   } catch (err: any) {
-    return { success: false, error: err.message }
+    return { success: false, error: formatDatabaseError(err, 'เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ') }
   }
 }
 
@@ -199,7 +200,7 @@ export const markOrderAsPaid = async (orderId: string): Promise<{ success: boole
     paid_at: new Date().toISOString()
   }).eq('id', orderId)
 
-  if (error) return { success: false, error: error.message }
+  if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการยืนยันการชำระเงิน') }
   return { success: true }
 }
 
@@ -238,6 +239,6 @@ export const cancelOrder = async (orderId: string, reason: string): Promise<{ su
     cancel_reason: reason
   }).eq('id', orderId)
 
-  if (error) return { success: false, error: error.message }
+  if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการยกเลิกคำสั่งซื้อ') }
   return { success: true }
 }

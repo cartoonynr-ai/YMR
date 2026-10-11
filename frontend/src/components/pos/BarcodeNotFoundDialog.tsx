@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { X, Search, AlertTriangle, Plus } from 'lucide-react';
-import { type Product, assignBarcode } from '../../services/inventory';
+import { type Product, assignBarcode, formatDatabaseError } from '../../services/inventory';
 import { useNavigate } from '@tanstack/react-router';
 
 interface BarcodeNotFoundDialogProps {
@@ -75,10 +75,10 @@ export default function BarcodeNotFoundDialog({ isOpen, barcode, inventory, onCl
       } else if (res.conflictProduct) {
         setError(`Barcode ถูกใช้งานอยู่แล้วโดยสินค้า: ${res.conflictProduct}`);
       } else {
-        setError(res.error || 'เกิดข้อผิดพลาดในการผูก Barcode');
+        setError(formatDatabaseError(res.error, 'เกิดข้อผิดพลาดในการผูก Barcode'));
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(formatDatabaseError(err, 'เกิดข้อผิดพลาดในการผูก Barcode'));
     } finally {
       setIsBinding(false);
     }

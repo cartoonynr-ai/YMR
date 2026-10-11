@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { getProductByBarcode, assignBarcode, addBrand, updateBrand } from './inventory'
+import { getProductByBarcode, assignBarcode, addBrand, updateBrand, formatDatabaseError, addVehicleModel, addCategory, updateCategory, deleteCategory, addProduct } from './inventory'
 import { supabase } from '../lib/supabase'
 
 vi.mock('../lib/supabase', () => ({
@@ -201,5 +201,180 @@ describe('Backend: inventory.ts (AC1/AC2/AC3)', () => {
 
     const res = await updateBrand('b-bendix', 'YAMAHA')
     expect(res.success).toBe(true)
+  })
+
+  // formatDatabaseError tests
+  describe('formatDatabaseError', () => {
+    it('should format unique constraint errors into polite Thai', () => {
+      expect(formatDatabaseError({ code: '23505', message: 'duplicate key value violates unique constraint "brands_name_key"' }))
+        .toBe('ชื่อยี่ห้อนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง')
+      
+      expect(formatDatabaseError({ code: '23505', message: 'duplicate key value violates unique constraint "vehicle_models_brand_id_name_key"' }))
+        .toBe('ชื่อรุ่นรถนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง')
+
+      expect(formatDatabaseError({ code: '23505', message: 'duplicate key value violates unique constraint "products_sku_key"' }))
+        .toBe('รหัส SKU นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง')
+
+      expect(formatDatabaseError({ code: '23505', message: 'duplicate key value violates unique constraint "products_barcode_key"' }))
+        .toBe('บาร์โค้ดนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง')
+
+      expect(formatDatabaseError({ code: '23505', message: 'duplicate key value violates unique constraint "categories_name_key"' }))
+        .toBe('ชื่อหมวดหมู่นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง')
+
+      expect(formatDatabaseError({ code: '23505', message: 'duplicate key value violates unique constraint "orders_order_number_key"' }))
+        .toBe('หมายเลขคำสั่งซื้อนี้มีอยู่ในระบบแล้ว กรุณาลองใหม่อีกครั้ง')
+    })
+
+    it('should format foreign key and network errors', () => {
+      expect(formatDatabaseError({ code: '23503', message: 'violates foreign key constraint' }))
+        .toBe('ไม่สามารถดำเนินการได้ เนื่องจากข้อมูลมีความเชื่อมโยงกับรายการอื่นในระบบ')
+
+      expect(formatDatabaseError(new Error('Failed to fetch')))
+        .toBe('ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาตรวจสอบสัญญาณอินเทอร์เน็ต')
+    })
+
+    it('should preserve existing Thai error messages', () => {
+      expect(formatDatabaseError('ชื่อรุ่นรถนี้มีอยู่ในยี่ห้อนี้แล้ว กรุณาตรวจสอบอีกครั้ง'))
+        .toBe('ชื่อรุ่นรถนี้มีอยู่ในยี่ห้อนี้แล้ว กรุณาตรวจสอบอีกครั้ง')
+    })
+  })
+
+  // Duplicate checks for vehicle models, categories, products
+  describe('Duplicate Entity Handling', () => {
+    it('should return Thai error when adding a duplicate vehicle model in the same brand', async () => {
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: 'm-1', name: 'PCX 160', brand_id: 'b-honda', is_deleted: false },
+                error: null
+              })
+            })
+          })
+        })
+      } as any)
+
+      const res = await addVehicleModel({ name: 'PCX 160', brand_id: 'b-honda' })
+      expect(res.success).toBe(false)
+      expect(res.error).toBe('ชื่อรุ่นรถนี้มีอยู่ในยี่ห้อนี้แล้ว กรุณาตรวจสอบอีกครั้ง')
+    })
+
+    it('should return Thai error when adding a duplicate category', async () => {
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          or: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { id: 'c-1', name: 'Engine Oil', thai_name: 'น้ำมันเครื่อง', is_deleted: false },
+              error: null
+            })
+          })
+        })
+      } as any)
+
+      const res = await addCategory({ name: 'Engine Oil', thaiName: 'น้ำมันเครื่อง' })
+      expect(res.success).toBe(false)
+      expect(res.error).toBe('ชื่อหมวดหมู่นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง')
+    })
+
+    it('should return Thai error when adding a product with duplicate SKU', async () => {
+      vi.mocked(supabase.from).mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: 'p-1', sku: 'HONDA-OIL-01' },
+                error: null
+              })
+            })
+          })
+        })
+      } as any)
+
+      const res = await addProduct({
+        name: 'Oil',
+        sku: 'HONDA-OIL-01',
+        barcode: '1234567890123',
+        brand: 'HONDA',
+        compatibility: '',
+        category: 'Engine Oil',
+        price: 100,
+        qty: 1,
+        threshold: 1
+      })
+      expect(res.success).toBe(false)
+      expect(res.error).toBe('รหัส SKU นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง')
+    })
+
+    it('should successfully update category by id or name', async () => {
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'categories') {
+          return {
+            select: vi.fn().mockImplementation((fields: string) => {
+              if (fields === 'id, name') {
+                return {
+                  eq: vi.fn().mockReturnValue({
+                    eq: vi.fn().mockResolvedValue({
+                      data: [{ id: '62daec53-2ebf-4d2a-88fb-5e20786d3eb6', name: 'Spark Plugs' }],
+                      error: null
+                    })
+                  })
+                }
+              }
+              return {
+                neq: vi.fn().mockReturnValue({
+                  or: vi.fn().mockReturnValue({
+                    eq: vi.fn().mockReturnValue({
+                      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null })
+                    })
+                  })
+                })
+              }
+            }),
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: null })
+            })
+          } as any
+        }
+        return {} as any
+      })
+
+      const res = await updateCategory('62daec53-2ebf-4d2a-88fb-5e20786d3eb6', {
+        name: 'Spark Plugs',
+        thaiName: 'หัวเทียน'
+      })
+      expect(res.success).toBe(true)
+    })
+
+    it('should block deleting category when products are still assigned', async () => {
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'categories') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({
+                  data: [{ id: 'cat-with-products', name: 'Spark Plugs' }],
+                  error: null
+                })
+              })
+            })
+          } as any
+        }
+        if (table === 'products') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockResolvedValue({ count: 5, error: null })
+              })
+            })
+          } as any
+        }
+        return {} as any
+      })
+
+      const res = await deleteCategory('cat-with-products')
+      expect(res.success).toBe(false)
+      expect(res.error).toBe('ไม่สามารถลบได้เนื่องจากยังมีสินค้าอยู่ในหมวดหมู่นี้')
+    })
   })
 })

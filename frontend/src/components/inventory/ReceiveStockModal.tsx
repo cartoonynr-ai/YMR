@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { X, Search, Package, Plus, Trash2, Save } from 'lucide-react';
-import { type Product, receiveStock } from '../../services/inventory';
+import { type Product, receiveStock, formatDatabaseError } from '../../services/inventory';
 
 interface ReceiveStockModalProps {
   isOpen: boolean;
@@ -74,7 +74,7 @@ export default function ReceiveStockModal({ isOpen, onClose, inventory, onSucces
     if (result.success) {
       onSuccess();
     } else {
-      alert("เกิดข้อผิดพลาดในการรับเข้าสินค้า: " + (result.error || "กรุณาลองใหม่อีกครั้ง"));
+      alert(formatDatabaseError(result.error, "เกิดข้อผิดพลาดในการรับเข้าสินค้า กรุณาลองใหม่อีกครั้ง"));
     }
   };
 

@@ -52,6 +52,67 @@ export interface VehicleModel {
   is_deleted?: boolean | null;
 }
 
+export function formatDatabaseError(error: any, fallbackMessage: string = 'เกิดข้อผิดพลาดในการดำเนินการ'): string {
+  if (!error) return fallbackMessage;
+  const msg = typeof error === 'string' ? error : (error.message || '');
+  const code = error?.code || '';
+  const lowerMsg = msg.toLowerCase();
+
+  // 1. Check duplicate key / unique constraint (PostgreSQL code 23505)
+  if (
+    code === '23505' ||
+    lowerMsg.includes('unique constraint') ||
+    lowerMsg.includes('duplicate key') ||
+    lowerMsg.includes('already exists')
+  ) {
+    if (lowerMsg.includes('vehicle_models') || lowerMsg.includes('model')) {
+      return 'ชื่อรุ่นรถนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง';
+    }
+    if (lowerMsg.includes('brands_name_key') || lowerMsg.includes('brands') || (lowerMsg.includes('brand') && !lowerMsg.includes('brand_id'))) {
+      return 'ชื่อยี่ห้อนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง';
+    }
+    if (lowerMsg.includes('products_sku_key') || lowerMsg.includes('sku')) {
+      return 'รหัส SKU นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง';
+    }
+    if (lowerMsg.includes('products_barcode_key') || lowerMsg.includes('barcode')) {
+      return 'บาร์โค้ดนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง';
+    }
+    if (lowerMsg.includes('categories_name_key') || lowerMsg.includes('categories_thai_name_key') || lowerMsg.includes('categor') || lowerMsg.includes('thai_name')) {
+      return 'ชื่อหมวดหมู่นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง';
+    }
+    if (lowerMsg.includes('orders_order_number_key') || lowerMsg.includes('order')) {
+      return 'หมายเลขคำสั่งซื้อนี้มีอยู่ในระบบแล้ว กรุณาลองใหม่อีกครั้ง';
+    }
+    return 'ข้อมูลนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง (ข้อมูลซ้ำ)';
+  }
+
+  // 2. Foreign key violation (PostgreSQL code 23503)
+  if (code === '23503' || lowerMsg.includes('foreign key constraint')) {
+    return 'ไม่สามารถดำเนินการได้ เนื่องจากข้อมูลมีความเชื่อมโยงกับรายการอื่นในระบบ';
+  }
+
+  // 3. Not found
+  if (code === 'PGRST116' || lowerMsg.includes('row not found') || lowerMsg.includes('not found')) {
+    return 'ไม่พบข้อมูลที่ระบุในระบบ';
+  }
+
+  // 4. Auth errors
+  if (lowerMsg.includes('not authenticated') || lowerMsg.includes('jwt') || lowerMsg.includes('unauthorized')) {
+    return 'กรุณาเข้าสู่ระบบก่อนทำรายการ';
+  }
+
+  // 5. Connection errors
+  if (lowerMsg.includes('failed to fetch') || lowerMsg.includes('networkerror') || lowerMsg.includes('network')) {
+    return 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาตรวจสอบสัญญาณอินเทอร์เน็ต';
+  }
+
+  // If already in Thai, return as-is
+  if (/[\u0E00-\u0E7F]/.test(msg)) {
+    return msg;
+  }
+
+  return fallbackMessage;
+}
 
 export const getCategories = async (): Promise<Category[]> => {
   const { data, error } = await supabase
@@ -224,69 +285,154 @@ export const uploadPoDocument = async (file: File, poNumber: string): Promise<{ 
   const path = `${poNumber}-${Date.now()}.${ext}`
 
   const { error } = await supabase.storage.from('po-documents').upload(path, file)
-  if (error) return { success: false, error: error.message }
+  if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการอัปโหลดเอกสาร PO') }
 
   const { data } = supabase.storage.from('po-documents').getPublicUrl(path)
   return { success: true, url: data.publicUrl }
 }
 
 export const addCategory = async (category: Category): Promise<{ success: boolean; error?: string }> => {
+  const nameTrim = (category.name || '').trim();
+  const thaiTrim = (category.thaiName || '').trim();
+  if (!nameTrim || !thaiTrim) return { success: false, error: 'กรุณาระบุข้อมูลหมวดหมู่ให้ครบถ้วน' };
+
+  // Check duplicate category name or thai_name
+  const { data: existing } = await supabase
+    .from('categories')
+    .select('id, is_deleted, name, thai_name')
+    .or(`name.ilike.${nameTrim},thai_name.ilike.${thaiTrim}`)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.is_deleted) {
+      const { error: restoreErr } = await supabase
+        .from('categories')
+        .update({ is_deleted: false, name: nameTrim, thai_name: thaiTrim })
+        .eq('id', existing.id);
+      if (restoreErr) return { success: false, error: formatDatabaseError(restoreErr, 'เกิดข้อผิดพลาดในการกู้คืนหมวดหมู่') };
+      return { success: true };
+    } else {
+      return { success: false, error: 'ชื่อหมวดหมู่นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง' };
+    }
+  }
+
   const { error } = await supabase.from('categories').insert({
-    name: category.name,
-    thai_name: category.thaiName
-  })
-  if (error) return { success: false, error: error.message }
-  return { success: true }
+    name: nameTrim,
+    thai_name: thaiTrim
+  });
+  if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการเพิ่มหมวดหมู่') };
+  return { success: true };
 }
 
-export const updateCategory = async (oldName: string, category: Category): Promise<{ success: boolean; error?: string }> => {
-  // Find category first
-  const { data: cat } = await supabase.from('categories').select('id').eq('name', oldName).single()
-  if (!cat) return { success: false, error: 'ไม่พบหมวดหมู่ที่ระบุในระบบ' }
+export const updateCategory = async (idOrOldName: string, category: Category): Promise<{ success: boolean; error?: string }> => {
+  const nameTrim = (category.name || '').trim();
+  const thaiTrim = (category.thaiName || '').trim();
+  if (!nameTrim || !thaiTrim) return { success: false, error: 'กรุณาระบุข้อมูลหมวดหมู่ให้ครบถ้วน' };
+
+  let query = supabase.from('categories').select('id, name').eq('is_deleted', false);
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrOldName);
+  if (isUuid) {
+    query = query.eq('id', idOrOldName);
+  } else {
+    query = query.eq('name', idOrOldName);
+  }
+  const { data: catList, error: findErr } = await query;
+  if (findErr || !catList || catList.length === 0) return { success: false, error: 'ไม่พบหมวดหมู่ที่ระบุในระบบ' };
+  const cat = catList[0];
+
+  // Check duplicate
+  const { data: existing } = await supabase
+    .from('categories')
+    .select('id, is_deleted')
+    .neq('id', cat.id)
+    .or(`name.ilike.${nameTrim},thai_name.ilike.${thaiTrim}`)
+    .eq('is_deleted', false)
+    .maybeSingle();
+
+  if (existing) {
+    return { success: false, error: 'ชื่อหมวดหมู่นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง' };
+  }
 
   const { error } = await supabase.from('categories').update({
-    name: category.name,
-    thai_name: category.thaiName
-  }).eq('id', cat.id)
+    name: nameTrim,
+    thai_name: thaiTrim
+  }).eq('id', cat.id);
 
-  if (error) return { success: false, error: error.message }
-  return { success: true }
+  if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการแก้ไขหมวดหมู่') };
+  return { success: true };
 }
 
-export const deleteCategory = async (name: string): Promise<{ success: boolean; error?: string }> => {
-  const { data: cat } = await supabase.from('categories').select('id').eq('name', name).single()
-  if (!cat) return { success: false, error: 'ไม่พบหมวดหมู่ที่ระบุในระบบ' }
+export const deleteCategory = async (idOrName: string): Promise<{ success: boolean; error?: string }> => {
+  let query = supabase.from('categories').select('id, name').eq('is_deleted', false);
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrName);
+  if (isUuid) {
+    query = query.eq('id', idOrName);
+  } else {
+    query = query.eq('name', idOrName);
+  }
+  const { data: catList, error: findErr } = await query;
+  if (findErr || !catList || catList.length === 0) return { success: false, error: 'ไม่พบหมวดหมู่ที่ระบุในระบบ' };
+  const cat = catList[0];
 
   // Check if products exist
-  const { count } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('category_id', cat.id).eq('is_deleted', false)
-  if (count && count > 0) return { success: false, error: 'ไม่สามารถลบได้เนื่องจากยังมีสินค้าอยู่ในหมวดหมู่นี้' }
+  const { count } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('category_id', cat.id).eq('is_deleted', false);
+  if (count && count > 0) return { success: false, error: 'ไม่สามารถลบได้เนื่องจากยังมีสินค้าอยู่ในหมวดหมู่นี้' };
 
-  const { error } = await supabase.from('categories').update({ is_deleted: true }).eq('id', cat.id)
-  if (error) return { success: false, error: error.message }
-  return { success: true }
+  const { error } = await supabase.from('categories').update({ is_deleted: true }).eq('id', cat.id);
+  if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการลบหมวดหมู่') };
+  return { success: true };
 }
 
 export const addProduct = async (product: Product): Promise<{ success: boolean; error?: string }> => {
-  const { data: sessionData } = await supabase.auth.getSession()
-  const userId = sessionData.session?.user.id
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user.id;
 
-  const { data: cat } = await supabase.from('categories').select('id').eq('name', product.category).single()
+  const skuTrim = product.sku.trim().toUpperCase();
+  const barcodeTrim = (product.barcode || '').trim();
+
+  // Check duplicate SKU
+  const { data: existingSku } = await supabase
+    .from('products')
+    .select('id')
+    .eq('sku', skuTrim)
+    .eq('is_deleted', false)
+    .maybeSingle();
+
+  if (existingSku) {
+    return { success: false, error: 'รหัส SKU นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง' };
+  }
+
+  // Check duplicate Barcode
+  if (barcodeTrim) {
+    const { data: existingBarcode } = await supabase
+      .from('products')
+      .select('id')
+      .eq('barcode', barcodeTrim)
+      .eq('is_deleted', false)
+      .maybeSingle();
+
+    if (existingBarcode) {
+      return { success: false, error: 'บาร์โค้ดนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง' };
+    }
+  }
+
+  const { data: cat } = await supabase.from('categories').select('id').eq('name', product.category).maybeSingle();
   
   const { data: newProd, error } = await supabase.from('products').insert({
-    sku: product.sku,
-    barcode: product.barcode,
-    name: product.name,
+    sku: skuTrim,
+    barcode: barcodeTrim || null,
+    name: product.name.trim(),
     brand: product.brand,
     compatibility: product.compatibility,
     category_id: cat?.id,
     price: product.price,
     qty: product.qty,
     threshold: product.threshold
-  }).select().single()
+  }).select().single();
 
-  if (error) return { success: false, error: error.message }
+  if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการเพิ่มสินค้าใหม่') };
 
-  if (product.qty > 0) {
+  if (product.qty > 0 && newProd) {
     const { error: moveError } = await supabase.from('stock_movements').insert({
       product_id: newProd.id,
       change: product.qty,
@@ -294,36 +440,51 @@ export const addProduct = async (product: Product): Promise<{ success: boolean; 
       reason: 'สินค้าเข้าคลังใหม่ (สร้างสินค้า)',
       created_by: userId,
       reference_doc: product.reference_doc
-    })
-    if (moveError) return { success: false, error: moveError.message }
+    });
+    if (moveError) return { success: false, error: formatDatabaseError(moveError, 'เกิดข้อผิดพลาดในการบันทึกประวัติสต็อก') };
   }
-  return { success: true }
+  return { success: true };
 }
 
 export const updateProduct = async (oldSku: string, product: Product, customReason?: string, documentUrl?: string): Promise<{ success: boolean; error?: string }> => {
-  const { data: sessionData } = await supabase.auth.getSession()
-  const userId = sessionData.session?.user.id
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user.id;
 
-  const { data: oldProd } = await supabase.from('products').select('*').eq('sku', oldSku).single()
-  if (!oldProd) return { success: false, error: 'ไม่พบข้อมูลสินค้าในระบบ' }
+  const { data: oldProd } = await supabase.from('products').select('*').eq('sku', oldSku).maybeSingle();
+  if (!oldProd) return { success: false, error: 'ไม่พบข้อมูลสินค้าในระบบ' };
 
-  const { data: cat } = await supabase.from('categories').select('id').eq('name', product.category).single()
+  const barcodeTrim = (product.barcode || '').trim();
+  if (barcodeTrim) {
+    const { data: existingBarcode } = await supabase
+      .from('products')
+      .select('id')
+      .eq('barcode', barcodeTrim)
+      .neq('id', oldProd.id)
+      .eq('is_deleted', false)
+      .maybeSingle();
 
-  const qtyDiff = product.qty - oldProd.qty
+    if (existingBarcode) {
+      return { success: false, error: 'บาร์โค้ดนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง' };
+    }
+  }
+
+  const { data: cat } = await supabase.from('categories').select('id').eq('name', product.category).maybeSingle();
+
+  const qtyDiff = product.qty - oldProd.qty;
 
   const { error } = await supabase.from('products').update({
-    sku: product.sku,
-    barcode: product.barcode,
-    name: product.name,
+    sku: product.sku.trim(),
+    barcode: barcodeTrim || null,
+    name: product.name.trim(),
     brand: product.brand,
     compatibility: product.compatibility,
     category_id: cat?.id,
     price: product.price,
     qty: product.qty,
     threshold: product.threshold
-  }).eq('id', oldProd.id)
+  }).eq('id', oldProd.id);
 
-  if (error) return { success: false, error: error.message }
+  if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลสินค้า') };
 
   if (qtyDiff !== 0) {
     const { error: moveError } = await supabase.from('stock_movements').insert({
@@ -334,8 +495,8 @@ export const updateProduct = async (oldSku: string, product: Product, customReas
       created_by: userId,
       reference_doc: product.reference_doc,
       document_url: documentUrl
-    })
-    if (moveError) return { success: false, error: moveError.message }
+    });
+    if (moveError) return { success: false, error: formatDatabaseError(moveError, 'เกิดข้อผิดพลาดในการบันทึกประวัติสต็อก') };
   } else if (oldProd.price !== product.price) {
     const { error: moveError } = await supabase.from('stock_movements').insert({
       product_id: oldProd.id,
@@ -344,8 +505,8 @@ export const updateProduct = async (oldSku: string, product: Product, customReas
       reason: `แก้ไขราคาสินค้า (จาก ฿${oldProd.price} เป็น ฿${product.price})`,
       created_by: userId,
       reference_doc: product.reference_doc
-    })
-    if (moveError) return { success: false, error: moveError.message }
+    });
+    if (moveError) return { success: false, error: formatDatabaseError(moveError, 'เกิดข้อผิดพลาดในการบันทึกประวัติสต็อก') };
   } else if (oldProd.name !== product.name) {
     const { error: moveError } = await supabase.from('stock_movements').insert({
       product_id: oldProd.id,
@@ -354,11 +515,11 @@ export const updateProduct = async (oldSku: string, product: Product, customReas
       reason: 'แก้ไขรายละเอียดสินค้า',
       created_by: userId,
       reference_doc: product.reference_doc
-    })
-    if (moveError) return { success: false, error: moveError.message }
+    });
+    if (moveError) return { success: false, error: formatDatabaseError(moveError, 'เกิดข้อผิดพลาดในการบันทึกประวัติสต็อก') };
   }
 
-  return { success: true }
+  return { success: true };
 }
 
 export const deleteProduct = async (sku: string): Promise<boolean> => {
@@ -525,17 +686,17 @@ export const updateBrand = async (id: string, name: string): Promise<{ success: 
 
 export const deleteBrand = async (id: string): Promise<{ success: boolean; error?: string }> => {
   const { error } = await supabase.from('brands').update({ is_deleted: true }).eq('id', id);
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการลบยี่ห้อรถ') };
   return { success: true };
 }
 
 export const clearBrandFromProducts = async (brandName: string): Promise<{ success: boolean; error?: string }> => {
   try {
     const { error } = await supabase.from('products').update({ brand: '' }).eq('brand', brandName);
-    if (error) return { success: false, error: error.message };
+    if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการปรับปรุงข้อมูลสินค้า') };
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message || 'Unknown error occurred' };
+    return { success: false, error: formatDatabaseError(err, 'เกิดข้อผิดพลาดในการปรับปรุงข้อมูลสินค้า') };
   }
 }
 
@@ -550,40 +711,101 @@ export const getVehicleModels = async (): Promise<VehicleModel[]> => {
   return data;
 }
 
-export const addVehicleModel = async (model: Partial<VehicleModel>): Promise<{ success: boolean; error?: string }> => {
-  const { error } = await supabase.from('vehicle_models').insert({
+export const addVehicleModel = async (model: Partial<VehicleModel>): Promise<{ success: boolean; error?: string; data?: VehicleModel }> => {
+  const trimmedName = (model.name || '').trim();
+  if (!trimmedName || !model.brand_id) {
+    return { success: false, error: 'กรุณาระบุข้อมูลรุ่นรถให้ครบถ้วน' };
+  }
+
+  // Check if model already exists for this brand (including soft-deleted)
+  const { data: existing, error: findError } = await supabase
+    .from('vehicle_models')
+    .select('*')
+    .eq('brand_id', model.brand_id)
+    .ilike('name', trimmedName)
+    .maybeSingle();
+
+  if (findError && findError.code !== 'PGRST116') {
+    return { success: false, error: formatDatabaseError(findError, 'เกิดข้อผิดพลาดในการตรวจสอบรุ่นรถ') };
+  }
+
+  if (existing) {
+    if (existing.is_deleted) {
+      // Auto restore soft-deleted model
+      const { data: restored, error: restoreErr } = await supabase
+        .from('vehicle_models')
+        .update({
+          is_deleted: false,
+          name: trimmedName,
+          type: model.type ?? existing.type,
+          cc: model.cc ?? existing.cc,
+          year_start: model.year_start ?? existing.year_start,
+          year_end: model.year_end ?? existing.year_end
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (restoreErr) return { success: false, error: formatDatabaseError(restoreErr, 'เกิดข้อผิดพลาดในการกู้คืนรุ่นรถ') };
+      return { success: true, data: restored };
+    } else {
+      return { success: false, error: 'ชื่อรุ่นรถนี้มีอยู่ในยี่ห้อนี้แล้ว กรุณาตรวจสอบอีกครั้ง' };
+    }
+  }
+
+  const { data: inserted, error } = await supabase.from('vehicle_models').insert({
     brand_id: model.brand_id,
-    name: model.name || '',
+    name: trimmedName,
     type: model.type,
     cc: model.cc,
     year_start: model.year_start,
     year_end: model.year_end
-  });
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  }).select().single();
+
+  if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการเพิ่มรุ่นรถ') };
+  return { success: true, data: inserted };
 }
 
 export const updateVehicleModel = async (id: string, model: Partial<VehicleModel>): Promise<{ success: boolean; error?: string }> => {
+  const trimmedName = (model.name || '').trim();
+  if (!trimmedName) {
+    return { success: false, error: 'กรุณาระบุชื่อรุ่นรถ' };
+  }
+
+  if (model.brand_id) {
+    const { data: existing } = await supabase
+      .from('vehicle_models')
+      .select('id, is_deleted')
+      .eq('brand_id', model.brand_id)
+      .ilike('name', trimmedName)
+      .neq('id', id)
+      .maybeSingle();
+
+    if (existing && !existing.is_deleted) {
+      return { success: false, error: 'ชื่อรุ่นรถนี้มีอยู่ในยี่ห้อนี้แล้ว กรุณาตรวจสอบอีกครั้ง' };
+    }
+  }
+
   const { error } = await supabase.from('vehicle_models').update({
-    name: model.name,
+    name: trimmedName,
     type: model.type,
     cc: model.cc,
     year_start: model.year_start,
     year_end: model.year_end
   }).eq('id', id);
-  if (error) return { success: false, error: error.message };
+
+  if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลรุ่นรถ') };
   return { success: true };
 }
 
 export const deleteVehicleModel = async (id: string): Promise<{ success: boolean; error?: string }> => {
   const { error } = await supabase.from('vehicle_models').update({ is_deleted: true }).eq('id', id);
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการลบรุ่นรถ') };
   return { success: true };
 }
 
 export const deleteAllModelsForBrand = async (brandId: string): Promise<{ success: boolean; error?: string }> => {
   const { error } = await supabase.from('vehicle_models').update({ is_deleted: true }).eq('brand_id', brandId);
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการลบรุ่นรถทั้งหมด') };
   return { success: true };
 }
 
@@ -614,7 +836,7 @@ export const receiveStock = async (items: { id: string; qty: number }[], poNumbe
     }
     return { success: true }
   } catch (error: any) {
-    return { success: false, error: error.message }
+    return { success: false, error: formatDatabaseError(error, 'เกิดข้อผิดพลาดในการรับเข้าสินค้า') }
   }
 }
 
