@@ -472,9 +472,14 @@ function Inventory() {
         setAlert({ message: 'แก้ไขยี่ห้อรถสำเร็จ', type: 'success' })
         setIsBrandModalOpen(false)
         setBrandFormName('')
-        setDbBrands(await getBrands())
+        const [updatedBrands, updatedModels] = await Promise.all([getBrands(), getVehicleModels()])
+        setDbBrands(updatedBrands)
+        setDbModels(updatedModels)
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการแก้ไขยี่ห้อรถ', type: 'error' })
+        const errMsg = res.error?.includes('unique constraint') || res.error?.includes('duplicate key')
+          ? 'ชื่อยี่ห้อนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง'
+          : (res.error || 'เกิดข้อผิดพลาดในการแก้ไขยี่ห้อรถ')
+        setAlert({ message: errMsg, type: 'error' })
       }
     } else {
       // Add
@@ -483,12 +488,17 @@ function Inventory() {
         setAlert({ message: 'เพิ่มยี่ห้อรถสำเร็จ', type: 'success' })
         setIsBrandModalOpen(false)
         setBrandFormName('')
-        setDbBrands(await getBrands())
+        const [updatedBrands, updatedModels] = await Promise.all([getBrands(), getVehicleModels()])
+        setDbBrands(updatedBrands)
+        setDbModels(updatedModels)
         if (res.data && res.data.id) {
           setSelectedBrand(res.data.id)
         }
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการเพิ่มยี่ห้อรถ', type: 'error' })
+        const errMsg = res.error?.includes('unique constraint') || res.error?.includes('duplicate key')
+          ? 'ชื่อยี่ห้อนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง'
+          : (res.error || 'เกิดข้อผิดพลาดในการเพิ่มยี่ห้อรถ')
+        setAlert({ message: errMsg, type: 'error' })
       }
     }
   }

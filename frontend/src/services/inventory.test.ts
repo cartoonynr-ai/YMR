@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { getProductByBarcode, assignBarcode } from './inventory'
+import { getProductByBarcode, assignBarcode, addBrand, updateBrand } from './inventory'
 import { supabase } from '../lib/supabase'
 
 vi.mock('../lib/supabase', () => ({
@@ -117,5 +117,89 @@ describe('Backend: inventory.ts (AC1/AC2/AC3)', () => {
     expect(res.success).toBe(false)
     expect(res.error).toBe('Barcode already in use')
     expect(res.conflictProduct).toBe('Other')
+  })
+
+  // Brands handling
+  it('should restore soft-deleted brand when addBrand is called with existing deleted name', async () => {
+    const mockDeletedBrand = { id: 'b-yamaha', name: 'YAMAHA', is_deleted: true }
+    const mockRestoredBrand = { id: 'b-yamaha', name: 'YAMAHA', is_deleted: false }
+
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === 'brands') {
+        return {
+          select: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: mockDeletedBrand, error: null })
+            })
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: mockRestoredBrand, error: null })
+              })
+            })
+          })
+        } as any
+      }
+      return {} as any
+    })
+
+    const res = await addBrand('YAMAHA')
+    expect(res.success).toBe(true)
+    expect(res.data?.name).toBe('YAMAHA')
+    expect(res.data?.is_deleted).toBe(false)
+  })
+
+  it('should return polite Thai error when adding a brand that is already active', async () => {
+    const mockActiveBrand = { id: 'b-honda', name: 'HONDA', is_deleted: false }
+
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === 'brands') {
+        return {
+          select: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: mockActiveBrand, error: null })
+            })
+          })
+        } as any
+      }
+      return {} as any
+    })
+
+    const res = await addBrand('HONDA')
+    expect(res.success).toBe(false)
+    expect(res.error).toBe('ชื่อยี่ห้อนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง')
+  })
+
+  it('should allow renaming brand to a soft-deleted brand name by cleaning up old record', async () => {
+    const mockExistingDeleted = { id: 'old-deleted-id', name: 'YAMAHA', is_deleted: true }
+
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === 'brands') {
+        return {
+          select: vi.fn().mockReturnValue({
+            ilike: vi.fn().mockReturnValue({
+              neq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: mockExistingDeleted, error: null })
+              })
+            })
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null })
+          })
+        } as any
+      }
+      if (table === 'vehicle_models') {
+        return {
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null })
+          })
+        } as any
+      }
+      return {} as any
+    })
+
+    const res = await updateBrand('b-bendix', 'YAMAHA')
+    expect(res.success).toBe(true)
   })
 })

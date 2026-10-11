@@ -428,18 +428,99 @@ export const getBrands = async (): Promise<Brand[]> => {
 
 export const addBrand = async (name: string): Promise<{ success: boolean; error?: string; data?: Brand }> => {
   try {
-    const { data, error } = await supabase.from('brands').insert({ name }).select().single();
-    if (error) return { success: false, error: error.message };
+    const trimmedName = name.trim();
+    if (!trimmedName) return { success: false, error: 'กรุณาระบุชื่อยี่ห้อรถ' };
+
+    // Check if brand with this name already exists in DB (including soft-deleted)
+    const { data: existing, error: findError } = await supabase
+      .from('brands')
+      .select('*')
+      .ilike('name', trimmedName)
+      .maybeSingle();
+
+    if (findError && findError.code !== 'PGRST116') {
+      return { success: false, error: findError.message };
+    }
+
+    if (existing) {
+      if (existing.is_deleted) {
+        // Automatically restore soft-deleted brand
+        const { data: restored, error: restoreError } = await supabase
+          .from('brands')
+          .update({ is_deleted: false, name: trimmedName })
+          .eq('id', existing.id)
+          .select()
+          .single();
+
+        if (restoreError) return { success: false, error: restoreError.message };
+        return { success: true, data: restored };
+      } else {
+        // Active brand already exists
+        return { success: false, error: 'ชื่อยี่ห้อนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง' };
+      }
+    }
+
+    // Insert new brand
+    const { data, error } = await supabase.from('brands').insert({ name: trimmedName }).select().single();
+    if (error) {
+      if (error.code === '23505' || error.message.includes('unique constraint') || error.message.includes('duplicate key')) {
+        return { success: false, error: 'ชื่อยี่ห้อนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง' };
+      }
+      return { success: false, error: error.message };
+    }
     return { success: true, data };
   } catch (err: any) {
-    return { success: false, error: err.message || 'Unknown error occurred' };
+    return { success: false, error: err.message || 'เกิดข้อผิดพลาดในการเพิ่มยี่ห้อรถ' };
   }
 }
 
 export const updateBrand = async (id: string, name: string): Promise<{ success: boolean; error?: string }> => {
-  const { error } = await supabase.from('brands').update({ name }).eq('id', id);
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  try {
+    const trimmedName = name.trim();
+    if (!trimmedName) return { success: false, error: 'กรุณาระบุชื่อยี่ห้อรถ' };
+
+    // Check if another brand with this name already exists
+    const { data: existing, error: findError } = await supabase
+      .from('brands')
+      .select('*')
+      .ilike('name', trimmedName)
+      .neq('id', id)
+      .maybeSingle();
+
+    if (findError && findError.code !== 'PGRST116') {
+      return { success: false, error: findError.message };
+    }
+
+    if (existing) {
+      if (existing.is_deleted) {
+        // Move any models belonging to the deleted brand to this brand
+        await supabase
+          .from('vehicle_models')
+          .update({ brand_id: id })
+          .eq('brand_id', existing.id);
+
+        // Rename the deleted brand so name unique constraint won't conflict
+        await supabase
+          .from('brands')
+          .update({ name: `${existing.name}_deleted_${Date.now()}` })
+          .eq('id', existing.id);
+      } else {
+        // Active brand already exists with this name
+        return { success: false, error: 'ชื่อยี่ห้อนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง' };
+      }
+    }
+
+    const { error } = await supabase.from('brands').update({ name: trimmedName }).eq('id', id);
+    if (error) {
+      if (error.code === '23505' || error.message.includes('unique constraint') || error.message.includes('duplicate key')) {
+        return { success: false, error: 'ชื่อยี่ห้อนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง' };
+      }
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'เกิดข้อผิดพลาดในการแก้ไขยี่ห้อรถ' };
+  }
 }
 
 export const deleteBrand = async (id: string): Promise<{ success: boolean; error?: string }> => {
