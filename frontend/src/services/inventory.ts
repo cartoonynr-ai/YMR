@@ -242,7 +242,7 @@ export const addCategory = async (category: Category): Promise<{ success: boolea
 export const updateCategory = async (oldName: string, category: Category): Promise<{ success: boolean; error?: string }> => {
   // Find category first
   const { data: cat } = await supabase.from('categories').select('id').eq('name', oldName).single()
-  if (!cat) return { success: false, error: 'Category not found' }
+  if (!cat) return { success: false, error: 'ไม่พบหมวดหมู่ที่ระบุในระบบ' }
 
   const { error } = await supabase.from('categories').update({
     name: category.name,
@@ -255,11 +255,11 @@ export const updateCategory = async (oldName: string, category: Category): Promi
 
 export const deleteCategory = async (name: string): Promise<{ success: boolean; error?: string }> => {
   const { data: cat } = await supabase.from('categories').select('id').eq('name', name).single()
-  if (!cat) return { success: false, error: 'Category not found' }
+  if (!cat) return { success: false, error: 'ไม่พบหมวดหมู่ที่ระบุในระบบ' }
 
   // Check if products exist
   const { count } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('category_id', cat.id).eq('is_deleted', false)
-  if (count && count > 0) return { success: false, error: 'Cannot delete: Products exist in this category' }
+  if (count && count > 0) return { success: false, error: 'ไม่สามารถลบได้เนื่องจากยังมีสินค้าอยู่ในหมวดหมู่นี้' }
 
   const { error } = await supabase.from('categories').update({ is_deleted: true }).eq('id', cat.id)
   if (error) return { success: false, error: error.message }
@@ -305,7 +305,7 @@ export const updateProduct = async (oldSku: string, product: Product, customReas
   const userId = sessionData.session?.user.id
 
   const { data: oldProd } = await supabase.from('products').select('*').eq('sku', oldSku).single()
-  if (!oldProd) return { success: false, error: 'Product not found' }
+  if (!oldProd) return { success: false, error: 'ไม่พบข้อมูลสินค้าในระบบ' }
 
   const { data: cat } = await supabase.from('categories').select('id').eq('name', product.category).single()
 

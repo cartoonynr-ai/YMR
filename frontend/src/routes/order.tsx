@@ -195,17 +195,17 @@ function OrderPage() {
     
     if (channel !== 'POS') {
       if (!customerName || !customerPhone) {
-        showToast('กรุณากรอกชื่อและเบอร์โทรศัพท์ผู้รับ สำหรับช่องทางออนไลน์')
+        showToast('กรุณาระบุชื่อและเบอร์โทรศัพท์ผู้รับ สำหรับช่องทางออนไลน์')
         return
       }
       if (!/^0\d{8,9}$/.test(customerPhone)) {
-        showToast('เบอร์โทรศัพท์ไม่ถูกต้อง (ต้องขึ้นต้นด้วย 0 และมี 9-10 หลัก)')
+        showToast('เบอร์โทรศัพท์ไม่ถูกต้อง (ต้องขึ้นต้นด้วย 0 และมีความยาว 9-10 หลัก)')
         return
       }
       
       const { houseNumber, street, subDistrict, district, province, zipcode } = selectedAddress
       if (!houseNumber.trim() || !street.trim() || !subDistrict.trim() || !district.trim() || !province.trim() || !zipcode.trim()) {
-        showToast('กรุณากรอกข้อมูลที่อยู่จัดส่งให้ครบทุกช่อง')
+        showToast('กรุณาระบุข้อมูลที่อยู่จัดส่งให้ครบถ้วน')
         return
       }
     }
@@ -242,7 +242,7 @@ function OrderPage() {
 
     const result = await createOrder(newOrderData)
     if (result.success) {
-      showToast(`บันทึกคำสั่งซื้อ ${result.orderNumber || result.orderId} เรียบร้อย และตัดสต๊อกสำเร็จ!`, 'success')
+      showToast(`บันทึกคำสั่งซื้อ ${result.orderNumber || result.orderId} และตัดสต็อกสำเร็จ`, 'success')
       // reset form
       setOrderItems([createEmptyItem()])
       setCustomerName('')
@@ -251,7 +251,7 @@ function OrderPage() {
       setSelectedAddressId(1)
       await loadData()
     } else {
-      showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกคำสั่งซื้อ')
+      showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง')
     }
     } finally {
       setIsSaving(false)
@@ -262,12 +262,12 @@ function OrderPage() {
     if (!cancelOrderObj || !cancelReasonStr.trim()) return
     const result = await cancelOrder(cancelOrderObj.id, cancelReasonStr)
     if (result.success) {
-      showToast('ยกเลิกคำสั่งซื้อและคืนสต็อกสำเร็จ!', 'success')
+      showToast('ยกเลิกคำสั่งซื้อและคืนสต็อกสำเร็จ', 'success')
       setCancelOrderObj(null)
       setCancelReasonStr('')
       await loadData()
     } else {
-      showToast(result.error || 'เกิดข้อผิดพลาด')
+      showToast(result.error || 'เกิดข้อผิดพลาดในการยกเลิกคำสั่งซื้อ กรุณาลองใหม่อีกครั้ง')
     }
   }
 
@@ -275,10 +275,10 @@ function OrderPage() {
     const result = await markOrderAsPaid(order.id)
     if (result.success) {
       const orderIdDisplay = order.order_number || order.id.split('-')[0]
-      showToast(`ยืนยันการชำระเงิน สำหรับออเดอร์ ${orderIdDisplay}`, 'success')
+      showToast(`ยืนยันการชำระเงินสำหรับคำสั่งซื้อ ${orderIdDisplay} สำเร็จ`, 'success')
       await loadData()
     } else {
-      showToast(result.error || 'เกิดข้อผิดพลาด')
+      showToast(result.error || 'เกิดข้อผิดพลาดในการยืนยันการชำระเงิน กรุณาลองใหม่อีกครั้ง')
     }
   }
 

@@ -80,14 +80,14 @@ function PosPage() {
 
   const addFromRecent = (product: {id: string, name: string, price: number, stock: number, barcode?: string}) => {
     if (product.stock <= 0) {
-      showToast('สินค้าหมดสต็อก (Out of stock)', 'error')
+      showToast('สินค้าหมดสต็อก (Out of stock) ไม่สามารถทำรายการได้', 'error')
       return
     }
 
     const existing = items.find(item => item.id === product.id)
     if (existing) {
       if (existing.qty >= product.stock) {
-        showToast('จำนวนสินค้าเกินสต็อกที่มี', 'error')
+        showToast('จำนวนสินค้าเกินจำนวนที่มีอยู่ในสต็อก', 'error')
         return
       }
       setItems(items.map(item => 
@@ -104,7 +104,7 @@ function PosPage() {
         const newQty = item.qty + delta
         if (newQty < 1) return item
         if (newQty > item.stock) {
-          showToast('จำนวนสินค้าเกินสต็อกที่มี', 'error')
+          showToast('จำนวนสินค้าเกินจำนวนที่มีอยู่ในสต็อก', 'error')
           return item
         }
         return { ...item, qty: newQty }
@@ -120,7 +120,7 @@ function PosPage() {
         if (isNaN(newQty)) newQty = 1
         if (newQty < 1) newQty = 1
         if (newQty > item.stock) {
-          showToast('จำนวนสินค้าเกินสต็อกที่มี', 'error')
+          showToast('จำนวนสินค้าเกินจำนวนที่มีอยู่ในสต็อก', 'error')
           newQty = item.stock
         }
         return { ...item, qty: newQty }
@@ -156,7 +156,7 @@ function PosPage() {
 
       const received = cashReceived === '' ? 0 : Number(cashReceived)
       if (paymentMethod === 'cash' && received < total) {
-        showToast('ยอดเงินที่รับมาไม่เพียงพอ', 'error')
+        showToast('ยอดเงินที่รับมาไม่เพียงพอกับยอดชำระ', 'error')
         return
       }
 
@@ -176,7 +176,7 @@ function PosPage() {
         showToast(`บันทึกการขายสำเร็จ`, 'success')
         setShowReceipt(result.orderNumber || result.orderId?.split('-')[0] || 'SUCCESS')
       } else {
-        showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกการขาย', 'error')
+        showToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกการขาย กรุณาลองใหม่อีกครั้ง', 'error')
       }
     } finally {
       setIsSaving(false)
@@ -466,7 +466,7 @@ function PosPage() {
                 <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Counter Staff</span>
               </div>
               <button 
-                onClick={() => { setItems([]); setCashReceived('0'); setBarcode(''); showToast('ล้างตะกร้าเรียบร้อย', 'success') }}
+                onClick={() => { setItems([]); setCashReceived('0'); setBarcode(''); showToast('ล้างรายการสินค้าในตะกร้าสำเร็จ', 'success') }}
                 className="text-[10px] font-black text-rose-500 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-colors uppercase tracking-widest flex items-center gap-1.5"
               >
                 <Trash2 className="w-3 h-3" /> Clear Cart
@@ -602,7 +602,7 @@ function PosPage() {
             addFromRecent({ id: product.sku, name: product.name, price: product.price, stock: product.qty });
             setNotFoundBarcode('');
             setBarcode('');
-            showToast('ผูกบาร์โค้ดสำเร็จและเพิ่มลงตะกร้าแล้ว', 'success');
+            showToast('ผูกบาร์โค้ดและเพิ่มสินค้าลงตะกร้าสำเร็จ', 'success');
           }}
         />
       </main>

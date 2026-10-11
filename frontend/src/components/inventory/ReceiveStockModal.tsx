@@ -58,7 +58,7 @@ export default function ReceiveStockModal({ isOpen, onClose, inventory, onSucces
   const handleSave = async () => {
     if (selectedItems.length === 0) return;
     if (!poNumber.trim()) {
-      alert("กรุณาระบุเลข PO");
+      alert("กรุณาระบุเลขที่เอกสาร PO");
       return;
     }
 
@@ -74,7 +74,7 @@ export default function ReceiveStockModal({ isOpen, onClose, inventory, onSucces
     if (result.success) {
       onSuccess();
     } else {
-      alert("เกิดข้อผิดพลาด: " + result.error);
+      alert("เกิดข้อผิดพลาดในการรับเข้าสินค้า: " + (result.error || "กรุณาลองใหม่อีกครั้ง"));
     }
   };
 

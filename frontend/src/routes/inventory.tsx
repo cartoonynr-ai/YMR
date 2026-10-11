@@ -402,19 +402,19 @@ function Inventory() {
     }
 
     if (isBarcodeDuplicate) {
-      setAlert({ message: 'บาร์โค้ดนี้มีในระบบแล้ว ไม่สามารถบันทึกได้', type: 'error' })
+      setAlert({ message: 'บาร์โค้ดนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง', type: 'error' })
       return
     }
 
     if (isSkuDuplicate) {
-      setAlert({ message: 'SKU นี้มีในระบบแล้ว ไม่สามารถบันทึกได้', type: 'error' })
+      setAlert({ message: 'รหัส SKU นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบอีกครั้ง', type: 'error' })
       return
     }
 
 
 
     if (barcode.trim().length !== 13) {
-      setAlert({ message: 'Barcode ต้องมี 13 ตัวอักษรเท่านั้น', type: 'error' })
+      setAlert({ message: 'บาร์โค้ดต้องมีความยาว 13 หลักเท่านั้น', type: 'error' })
       return
     }
 
@@ -439,7 +439,7 @@ function Inventory() {
         setIsProductModalOpen(false)
         await loadData()
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' })
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลสินค้า', type: 'error' })
       }
     } else {
     
@@ -449,7 +449,7 @@ function Inventory() {
         setIsProductModalOpen(false)
         await loadData()
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' })
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการเพิ่มสินค้าใหม่', type: 'error' })
       }
     }
   }
@@ -461,7 +461,7 @@ function Inventory() {
     const brandName = brandFormName
 
     if (!brandName) {
-      setAlert({ message: 'กรุณากรอกชื่อยี่ห้อ', type: 'error' })
+      setAlert({ message: 'กรุณาระบุชื่อยี่ห้อรถ', type: 'error' })
       return
     }
 
@@ -474,7 +474,7 @@ function Inventory() {
         setBrandFormName('')
         setDbBrands(await getBrands())
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' })
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการแก้ไขยี่ห้อรถ', type: 'error' })
       }
     } else {
       // Add
@@ -488,13 +488,13 @@ function Inventory() {
           setSelectedBrand(res.data.id)
         }
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' })
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการเพิ่มยี่ห้อรถ', type: 'error' })
       }
     }
   }
 
   const handleDeleteBrand = async (brandId: string, brandName: string, isDb: boolean) => {
-    if (window.confirm('ต้องการลบยี่ห้อรถนี้หรือไม่? (หากมีสินค้าใช้ชื่อยี่ห้อนี้อยู่ ข้อมูลยี่ห้อในสินค้านั้นจะถูกเปลี่ยนเป็นค่าว่างด้วย)')) {
+    if (window.confirm('ยืนยันการลบยี่ห้อรถนี้หรือไม่? (หากมีสินค้าที่ใช้ยี่ห้อนี้อยู่ ข้อมูลยี่ห้อของสินค้าดังกล่าวจะถูกล้างออก)')) {
       let success = true;
       let errMsg = '';
       
@@ -502,7 +502,7 @@ function Inventory() {
         const res = await deleteBrand(brandId);
         if (!res.success) {
           success = false;
-          errMsg = res.error || 'เกิดข้อผิดพลาดในการลบ';
+          errMsg = res.error || 'เกิดข้อผิดพลาดในการลบยี่ห้อรถ';
         }
       }
 
@@ -510,7 +510,7 @@ function Inventory() {
         const clearRes = await clearBrandFromProducts(brandName);
         if (!clearRes.success) {
           success = false;
-          errMsg = clearRes.error || 'เกิดข้อผิดพลาดในการเคลียร์ข้อมูลสินค้า';
+          errMsg = clearRes.error || 'เกิดข้อผิดพลาดในการปรับปรุงข้อมูลสินค้า';
         }
       }
 
@@ -529,17 +529,17 @@ function Inventory() {
   const handleSaveModel = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!modelForm.name || !modelForm.brand_id) {
-      setAlert({ message: 'กรุณากรอกข้อมูลให้ครบ', type: 'error' });
+      setAlert({ message: 'กรุณาระบุข้อมูลรุ่นรถให้ครบถ้วน', type: 'error' });
       return;
     }
     if (editingModel) {
       const res = await updateVehicleModel(editingModel.id, modelForm);
       if (res.success) {
-        setAlert({ message: 'อัปเดตรุ่นรถสำเร็จ', type: 'success' });
+        setAlert({ message: 'แก้ไขข้อมูลรุ่นรถสำเร็จ', type: 'success' });
         setIsModelModalOpen(false);
         setDbModels(await getVehicleModels());
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' });
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลรุ่นรถ', type: 'error' });
       }
     } else {
       const res = await addVehicleModel(modelForm);
@@ -548,31 +548,31 @@ function Inventory() {
         setIsModelModalOpen(false);
         setDbModels(await getVehicleModels());
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' });
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการเพิ่มรุ่นรถ', type: 'error' });
       }
     }
   }
 
   const handleDeleteModel = async (id: string) => {
-    if (window.confirm('ต้องการลบรุ่นรถนี้หรือไม่?')) {
+    if (window.confirm('ยืนยันการลบรุ่นรถนี้หรือไม่?')) {
       const res = await deleteVehicleModel(id);
       if (res.success) {
         setAlert({ message: 'ลบรุ่นรถสำเร็จ', type: 'success' });
         setDbModels(await getVehicleModels());
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' });
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการลบรุ่นรถ', type: 'error' });
       }
     }
   }
 
   const handleDeleteAllModelsForBrand = async (brandId: string) => {
-    if (window.confirm('ต้องการลบรุ่นรถ "ทั้งหมด" ในยี่ห้อนี้หรือไม่? (เฉพาะรุ่นรถจะถูกลบ ยี่ห้อจะยังคงอยู่)')) {
+    if (window.confirm('ยืนยันการลบรุ่นรถทั้งหมดในยี่ห้อนี้หรือไม่? (ยี่ห้อรถจะยังคงอยู่)')) {
       const res = await deleteAllModelsForBrand(brandId);
       if (res.success) {
         setAlert({ message: 'ลบรุ่นรถทั้งหมดสำเร็จ', type: 'success' });
         setDbModels(await getVehicleModels());
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' });
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการลบรุ่นรถทั้งหมด', type: 'error' });
       }
     }
   }
@@ -584,7 +584,7 @@ function Inventory() {
     const { name, thaiName } = categoryForm
 
     if (!name || !thaiName) {
-      setAlert({ message: 'กรุณากรอกข้อมูลให้ครบทุกช่อง', type: 'error' })
+      setAlert({ message: 'กรุณาระบุข้อมูลหมวดหมู่ให้ครบถ้วน', type: 'error' })
       return
     }
 
@@ -601,7 +601,7 @@ function Inventory() {
         setIsCategoryModalOpen(false)
         await loadData()
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' })
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการแก้ไขหมวดหมู่', type: 'error' })
       }
     } else {
       // Add
@@ -611,7 +611,7 @@ function Inventory() {
         setIsCategoryModalOpen(false)
         await loadData()
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' })
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการเพิ่มหมวดหมู่', type: 'error' })
       }
     }
   }
@@ -625,14 +625,14 @@ function Inventory() {
       if (res) {
         setAlert({ message: `ลบสินค้า ${deleteTarget.displayName} สำเร็จ`, type: 'success' })
       } else {
-        setAlert({ message: 'ไม่สามารถลบสินค้าได้', type: 'error' })
+        setAlert({ message: 'ไม่สามารถลบข้อมูลสินค้าได้ กรุณาลองใหม่อีกครั้ง', type: 'error' })
       }
     } else {
       const res = await deleteCategory(deleteTarget.key)
       if (res.success) {
         setAlert({ message: `ลบหมวดหมู่ ${deleteTarget.displayName} สำเร็จ`, type: 'success' })
       } else {
-        setAlert({ message: res.error || 'เกิดข้อผิดพลาด', type: 'error' })
+        setAlert({ message: res.error || 'เกิดข้อผิดพลาดในการลบหมวดหมู่', type: 'error' })
       }
     }
 
@@ -855,7 +855,7 @@ function Inventory() {
                   onClick={() => {
                     const currentBrand = computedBrandData.find(b => b.id === selectedBrand);
                     if (!currentBrand || !currentBrand.isDb) {
-                      window.alert('กรุณากด "+ เพิ่มยี่ห้อรถ" ด้านบน แล้วสร้างยี่ห้อนี้ลงในฐานข้อมูลก่อนเพิ่มรุ่นรถครับ (ข้อมูลยี่ห้อปัจจุบันดึงมาจากชื่อสินค้าเท่านั้น)');
+                      setAlert({ message: 'กรุณากด "+ เพิ่มยี่ห้อรถ" เพื่อสร้างยี่ห้อนี้ในฐานข้อมูลก่อนเพิ่มรุ่นรถ', type: 'error' });
                       return;
                     }
                     setEditingModel(null);

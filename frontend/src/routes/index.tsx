@@ -104,7 +104,16 @@ function Login() {
         }
       }
     } catch (err: any) {
-      setApiError(err.message || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือคุณอาจเลือกประเภทผู้ใช้งานผิด')
+      const msg = err.message || ''
+      if (msg.includes('Invalid login credentials')) {
+        setApiError('อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง')
+      } else if (msg.includes('Email not confirmed')) {
+        setApiError('อีเมลนี้ยังไม่ได้ยืนยันตัวตน กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ')
+      } else if (msg) {
+        setApiError(msg)
+      } else {
+        setApiError('อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือประเภทผู้ใช้งานไม่ตรงกับบัญชี')
+      }
     }
   }
 

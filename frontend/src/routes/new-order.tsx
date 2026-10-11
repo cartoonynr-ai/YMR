@@ -53,7 +53,7 @@ function NewOrderPage() {
       setProducts(prods)
       setReferenceDoc(newPo)
     } catch (err: any) {
-      showToast(err.message || 'Error loading data')
+      showToast(err.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า กรุณาลองใหม่อีกครั้ง', 'error')
     }
   }
 
@@ -116,13 +116,13 @@ function NewOrderPage() {
 
       if (!res.success) {
         hasError = true
-        showToast(`เกิดข้อผิดพลาดในการอัปเดต ${item.product.name}: ${res.error}`, 'error')
+        showToast(`เกิดข้อผิดพลาดในการปรับปรุงข้อมูล ${item.product.name}: ${res.error || 'กรุณาลองใหม่อีกครั้ง'}`, 'error')
         break // Stop on first error
       }
     }
 
     if (!hasError) {
-      showToast('บันทึกการรับสินค้าเข้าสต็อกเรียบร้อยแล้ว!', 'success')
+      showToast('บันทึกการรับสินค้าเข้าสต็อกและออกใบสั่งซื้อสำเร็จ', 'success')
       
       setLastOrder({
         poNumber: referenceDoc.trim() || 'PO-XXXX',
