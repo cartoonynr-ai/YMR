@@ -755,24 +755,26 @@ function Inventory() {
         )}
 
         {/* Search Input */}
-        <div className={`relative ${activeTab === 'history' ? 'ml-2' : 'ml-auto'} w-full md:w-64 mt-2 md:mt-0`}>
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400" />
-          </span>
-          <input
-            type="text"
-            placeholder={
-              activeTab === 'categories'
-                ? 'ค้นหาหมวดหมู่...'
-                : activeTab === 'history'
-                ? 'ค้นหาประวัติ...'
-                : 'ค้นหาชื่อสินค้า/SKU/บาร์โค้ด...'
-            }
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none transition-all placeholder-gray-400"
-          />
-        </div>
+        {activeTab !== 'compatibility' && (
+          <div className={`relative ${activeTab === 'history' ? 'ml-2' : 'ml-auto'} w-full md:w-64 mt-2 md:mt-0`}>
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </span>
+            <input
+              type="text"
+              placeholder={
+                activeTab === 'categories'
+                  ? 'ค้นหาหมวดหมู่...'
+                  : activeTab === 'history'
+                  ? 'ค้นหาประวัติ...'
+                  : 'ค้นหาชื่อสินค้า/SKU/บาร์โค้ด...'
+              }
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none transition-all placeholder-gray-400"
+            />
+          </div>
+        )}
       </div>
       {/* Main Content Pane */}
       {activeTab === 'compatibility' ? (
